@@ -1,8 +1,6 @@
 displayName: "hjson++"
 name: "hjsonpp"
 author: "ItzCraft"
-
-#the fully qualified main class of the mod
 main: "hjsonp.HjsonPlusPlusMod"
 description: "me"
 version: 1.0
