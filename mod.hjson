@@ -1,7 +1,7 @@
 displayName: "hjson++"
 name: "hjsonpp"
 author: "ItzCraft"
-main: "hjsonp.HjsonPlusPlusMod"
+main: "hjsonpp.HjsonPlusPlusMod"
 description: "me"
 version: 1.0
 minGameVersion: 149
