@@ -3,8 +3,7 @@ package hjsonpp.expand;
 import arc.util.Nullable;
 import mindustry.type.*;
 import mindustry.world.blocks.power.ConsumeGenerator;
-import mindustry.world.meta.Stat;
-import mindustry.world.meta.StatValues;
+import mindustry.world.meta.*;
 
 public class AdvancedConsumeGenerator extends ConsumeGenerator{
     @Nullable
@@ -15,6 +14,7 @@ public class AdvancedConsumeGenerator extends ConsumeGenerator{
     public LiquidStack outputLiquid;
     @Nullable
     public LiquidStack[] outputLiquids;
+    public int[] liquidOutputDirections = new int[]{-1};
     public AdvancedConsumeGenerator(String name){
         super(name);
     }
@@ -73,6 +73,44 @@ public class AdvancedConsumeGenerator extends ConsumeGenerator{
     }
 
     public class AdvancedConsumeGeneratorBuild extends ConsumeGeneratorBuild{
+        @Override
+        public void updateTile(){
+            if (AdvancedConsumeGenerator.this.outputLiquids != null) {
+                float inc = this.getProgressIncrease(1.0F);
 
+                for(LiquidStack output : AdvancedConsumeGenerator.this.outputLiquids) {
+                    this.handleLiquid(this, output.liquid, Math.min(output.amount * inc, AdvancedConsumeGenerator.this.liquidCapacity - this.liquids.get(output.liquid)));
+                }
+            }
+            this.craft();
+            this.dumpOutputs();
+            super.updateTile();
+        }
+        public void craft() {
+            this.consume();
+            if (AdvancedConsumeGenerator.this.outputItems != null) {
+                for(ItemStack output : AdvancedConsumeGenerator.this.outputItems) {
+                    for(int i = 0; i < output.amount; ++i) {
+                        this.offload(output.item);
+                    }
+                }
+            }
+        }
+
+        public void dumpOutputs() {
+            if (AdvancedConsumeGenerator.this.outputItems != null && this.timer(AdvancedConsumeGenerator.this.timerDump, (float)AdvancedConsumeGenerator.this.dumpTime / this.timeScale)) {
+                for(ItemStack output : AdvancedConsumeGenerator.this.outputItems) {
+                    this.dump(output.item);
+                }
+            }
+
+            if (AdvancedConsumeGenerator.this.outputLiquids != null) {
+                for(int i = 0; i < AdvancedConsumeGenerator.this.outputLiquids.length; ++i) {
+                    int dir = AdvancedConsumeGenerator.this.liquidOutputDirections.length > i ? AdvancedConsumeGenerator.this.liquidOutputDirections[i] : -1;
+                    this.dumpLiquid(AdvancedConsumeGenerator.this.outputLiquids[i].liquid, 2.0F, dir);
+                }
+            }
+
+        }
     }
 }
