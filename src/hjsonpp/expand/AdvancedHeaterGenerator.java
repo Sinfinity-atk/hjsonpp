@@ -8,6 +8,7 @@ import mindustry.world.blocks.heat.HeatBlock;
 import mindustry.world.draw.*;
 import mindustry.world.meta.*;
 
+//just a version where it can output. check advanced consume generator
 public class AdvancedHeaterGenerator extends AdvancedConsumeGenerator {
     public float heatOutput = 10.0F;
     public float warmupRate = 0.15F;

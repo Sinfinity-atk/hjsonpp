@@ -1,11 +1,16 @@
 package hjsonpp.expand;
 
+import arc.Core;
 import arc.util.Nullable;
+import arc.util.Strings;
+import mindustry.graphics.Pal;
 import mindustry.type.*;
+import mindustry.ui.Bar;
 import mindustry.world.blocks.power.ConsumeGenerator;
 import mindustry.world.meta.*;
 
 public class AdvancedConsumeGenerator extends ConsumeGenerator{
+    // make them able to output multiple items and liquids
     @Nullable
     public ItemStack outputItem;
     @Nullable
@@ -15,6 +20,10 @@ public class AdvancedConsumeGenerator extends ConsumeGenerator{
     @Nullable
     public LiquidStack[] outputLiquids;
     public int[] liquidOutputDirections = new int[]{-1};
+
+    // is production bar will be displayed
+    public boolean progressBar = false;
+
     public AdvancedConsumeGenerator(String name){
         super(name);
     }
@@ -39,6 +48,15 @@ public class AdvancedConsumeGenerator extends ConsumeGenerator{
             for(LiquidStack stack : this.outputLiquids) {
                 this.addLiquidBar(stack.liquid);
             }
+        }
+        if (progressBar) {
+            this.addBar("hj-bar.progress", (AdvancedConsumeGeneratorBuild entity) ->
+                    new Bar(
+                            () -> Core.bundle.format("bar.production-progress", Strings.fixed(entity.totalProgress() / itemDuration * 100, 1)),
+                            () -> Pal.accent,
+                            () -> entity.totalProgress() / itemDuration
+                    )
+            );
         }
     }
 

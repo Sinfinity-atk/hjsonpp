@@ -2,7 +2,7 @@ displayName: "hjson++"
 name: "hjsonpp"
 author: "ItzCraft"
 main: "hjsonpp.HjsonPlusPlusMod"
-description: "me"
+description: "Adds some new additional classes to help hjson modders. \nNote: this a liblary. Not playable mod."
 version: 1.0
 minGameVersion: 149
 java: true
