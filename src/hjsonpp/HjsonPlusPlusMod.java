@@ -9,7 +9,7 @@ public class HjsonPlusPlusMod extends Mod{
         ClassMap.classes.put("AdvancedHeaterGenerator", hjsonpp.expand.AdvancedHeaterGenerator.class);
         ClassMap.classes.put("TileGenerator", hjsonpp.expand.TileGenerator.class);
         ClassMap.classes.put("AdvancedCoreBlock", hjsonpp.expand.AdvancedCoreBlock.class);
-        ClassMap.classes.put("GeneratorCodeBlock", hjsonpp.expand.GeneratorCoreBlock.class);
+        ClassMap.classes.put("GeneratorCoreBlock", hjsonpp.expand.GeneratorCoreBlock.class);
         ClassMap.classes.put("AccelTurret", hjsonpp.expand.AccelTurret.class);
         ClassMap.classes.put("DrawTeam", hjsonpp.expand.DrawTeam.class);
     }
