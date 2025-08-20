@@ -11,5 +11,7 @@ classes that are added:
 - AccelTurret - turret which have accelaration
 - DrawTeam - drawer class. Draws -team sprite
 
+and also adds some effects!
+
 # WARNING
 this liblary is still WIP. report all errors to [IJT team mods discord server](https://discord.gg/btUe3rhGuQ)
