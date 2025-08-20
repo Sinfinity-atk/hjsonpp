@@ -10,3 +10,6 @@ classes that are added:
 - GeneratorCoreBlock - basic core block but it can generate power
 - AccelTurret - turret which have accelaration
 - DrawTeam - drawer class. Draws -team sprite
+
+# WARNING
+this liblary is still WIP. report all errors to [IJT team mods discord server](https://discord.gg/btUe3rhGuQ)
