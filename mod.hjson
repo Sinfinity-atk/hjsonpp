@@ -1,5 +1,6 @@
 displayName: "hjson++"
 name: "hjsonpp"
+repo: "ItzCraft/hjsonpp"
 author: "ItzCraft"
 main: "hjsonpp.HjsonPlusPlusMod"
 description: "Adds some new additional classes to help hjson modders. \nNote: this a liblary. Not playable mod."
