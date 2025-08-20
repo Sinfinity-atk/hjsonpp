@@ -4,5 +4,5 @@ author: "ItzCraft"
 main: "hjsonpp.HjsonPlusPlusMod"
 description: "Adds some new additional classes to help hjson modders. \nNote: this a liblary. Not playable mod."
 version: 1.0
-minGameVersion: 149
+minGameVersion: 150.1
 java: true
