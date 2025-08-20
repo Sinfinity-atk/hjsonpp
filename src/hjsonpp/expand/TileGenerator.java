@@ -1,17 +1,23 @@
 package hjsonpp.expand;
 
+import arc.struct.Seq;
 import mindustry.game.Team;
-import mindustry.world.Tile;
-import mindustry.world.blocks.environment.Floor;
+import mindustry.world.*;
 
 public class TileGenerator extends AdvancedConsumeGenerator{
-    public Floor[] floors;
+    public Seq<Block> filter = new Seq<>();
     public TileGenerator(String name){
         super(name);
     }
+
+    @Override
+    public void setStats(){
+        super.setStats();
+    }
+
     public boolean canPlaceOn(Tile tile, Team team){
-        for(Floor floor : floors){
-            if(tile.floor() == floor){
+        for(Block floor : filter){
+            if(tile.floor() == floor.asFloor()){
                 return true;
             }
         }
