@@ -1,6 +1,7 @@
 package hjsonpp.expand;
 
 import arc.util.Time;
+import hjsonpp.expand.meta.AdditionalStats;
 import mindustry.world.blocks.defense.Wall;
 
 public class HealingWall extends Wall{
@@ -9,6 +10,12 @@ public class HealingWall extends Wall{
 
     public HealingWall(String name){
         super(name);
+    }
+
+    @Override
+    public void setStats(){
+        super.setStats();
+        stats.add(AdditionalStats.healPercent, healPercent);
     }
 
     public class HealingWallBuild extends WallBuild {

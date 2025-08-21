@@ -5,5 +5,6 @@ import mindustry.world.meta.StatCat;
 
 public class AdditionalStats{
     public static Stat
-    produceChance = new Stat("produce-chance", StatCat.crafting);
+            healPercent = new Stat("heal-percent", StatCat.general),
+            produceChance = new Stat("produce-chance", StatCat.crafting);
 }
