@@ -3,6 +3,7 @@ package hjsonpp.expand;
 import arc.struct.Seq;
 import mindustry.game.Team;
 import mindustry.world.*;
+import mindustry.world.meta.Stat;
 
 public class TileGenerator extends AdvancedConsumeGenerator{
     public Seq<Block> filter = new Seq<>();
@@ -13,6 +14,7 @@ public class TileGenerator extends AdvancedConsumeGenerator{
     @Override
     public void setStats(){
         super.setStats();
+        stats.add(Stat.output, "@x@ ~ @x@");
     }
 
     public boolean canPlaceOn(Tile tile, Team team){
