@@ -1,3 +1,5 @@
+![image](assets/icon.png)
+
 # Hjson++
 
 an liblary that adds new classes to work with!
