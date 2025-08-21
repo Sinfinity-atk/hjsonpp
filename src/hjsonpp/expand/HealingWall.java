@@ -1,0 +1,30 @@
+package hjsonpp.expand;
+
+import arc.util.Time;
+import mindustry.world.blocks.defense.Wall;
+
+public class HealingWall extends Wall{
+    public float healReload = 1f;
+    public float healPercent = 7f;
+
+    public HealingWall(String name){
+        super(name);
+    }
+
+    public class HealingWallBuild extends WallBuild {
+        public float charge = 0, recharge = 0;
+        boolean canHeal = true;
+
+        @Override
+        public void updateTile() {
+            charge += Time.delta;
+            if(charge >= healReload && canHeal && health() < maxHealth()) {
+                charge = 0f;
+                if(health() >= maxHealth()) canHeal = false;
+
+                heal((maxHealth() / 5) * (healPercent) / 100f);
+                recentlyHealed();
+            }
+        }
+    }
+}
