@@ -7,4 +7,3 @@ description: "Adds some new additional classes to help hjson modders. \nNote: th
 version: 1.0
 minGameVersion: 150.1
 java: true
-hideBrowser: true

@@ -7,7 +7,7 @@ classes that are added:
 
 - AdvancedConsumeGenerator - you can now output items/liquids and make craft progress bar
 - AdvancedHeaterGenerator - basically the same version as HeaterGenerator but have same things as previous class
-- TileGenerator - placeable on only specific tiles (WIP)
+- TileGenerator - placeable on only specific tiles
 - AdvancedCoreBlock - basically you can use drawers
 - GeneratorCoreBlock - basic core block but it can generate power
 - AccelTurret - turret which have accelaration
