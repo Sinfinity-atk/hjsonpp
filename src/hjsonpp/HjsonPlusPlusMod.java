@@ -12,6 +12,7 @@ public class HjsonPlusPlusMod extends Mod{
         ClassMap.classes.put("GeneratorCoreBlock", hjsonpp.expand.GeneratorCoreBlock.class);
         ClassMap.classes.put("AccelTurret", hjsonpp.expand.AccelTurret.class);
         ClassMap.classes.put("DrawTeam", hjsonpp.expand.DrawTeam.class);
+        ClassMap.classes.put("EffectWeapon", hjsonpp.expand.EffectWeapon.class);
         ClassMap.classes.put("CustomEffects", hjsonpp.expand.CustomEffects.class);
     }
 }
