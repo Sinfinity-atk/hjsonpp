@@ -19,7 +19,7 @@ public class HealingWall extends Wall{
     }
 
     public class HealingWallBuild extends WallBuild {
-        public float charge = 0, recharge = 0;
+        public float charge = 0;
         boolean canHeal = true;
 
         @Override
@@ -27,10 +27,11 @@ public class HealingWall extends Wall{
             charge += Time.delta;
             if(charge >= healReload && canHeal && health() < maxHealth()) {
                 charge = 0f;
-                if(health() >= maxHealth()) canHeal = false;
-
                 heal((maxHealth() / 5) * (healPercent) / 100f);
                 recentlyHealed();
+
+                if(health() >= maxHealth()) canHeal = false;
+
             }
         }
     }
