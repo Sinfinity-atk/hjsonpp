@@ -24,14 +24,14 @@ public class HealingWall extends Wall{
 
         @Override
         public void updateTile() {
+            canHeal = true;
             charge += Time.delta;
             if(charge >= healReload && canHeal && health() < maxHealth()) {
                 charge = 0f;
-                heal((maxHealth() / 5) * (healPercent) / 100f);
-                recentlyHealed();
-
                 if(health() >= maxHealth()) canHeal = false;
 
+                heal((maxHealth() / 5) * (healPercent) / 100f);
+                recentlyHealed();
             }
         }
     }
