@@ -1,0 +1,11 @@
+type: TileGenerator
+health: 131
+size: 2
+requirements: [
+    copper/5
+]
+filter: [
+    grass,
+    ice
+]
+powerProduction: 120
