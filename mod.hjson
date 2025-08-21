@@ -5,5 +5,6 @@ author: "ItzCraft \n also thanks to Sputnuc for AccelTurret code."
 main: "hjsonpp.HjsonPlusPlusMod"
 description: "Adds some new additional classes to help hjson modders. \nNote: this a liblary. Not playable mod."
 version: 1.0
+subtitle: goodluck with modding!
 minGameVersion: 150.1
 java: true
