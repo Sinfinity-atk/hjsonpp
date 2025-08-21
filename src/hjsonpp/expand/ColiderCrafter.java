@@ -50,8 +50,8 @@ public class ColiderCrafter extends GenericCrafter{
                 boolean chanced = Mathf.chance(produceChance);
                 if(chanced){craft();}
             }
-
-            dumpOutputs();
+            boolean chanced = Mathf.chance(produceChance);
+            if(chanced){dumpOutputs();}
         }
     }
 }
