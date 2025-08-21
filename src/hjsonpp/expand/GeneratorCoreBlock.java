@@ -24,7 +24,7 @@ public class GeneratorCoreBlock extends CoreBlock{
     @Override
     public void load(){
         super.load();
-        uiIcon = fullIcon = editorIcon = Core.atlas.find(name + "-full");
+        uiIcon = fullIcon = Core.atlas.find(name + "-full");
     }
 
     @Override
