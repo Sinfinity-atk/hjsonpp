@@ -48,7 +48,7 @@ public class ColiderCrafter extends GenericCrafter{
 
             if(progress >= 1f){
                 boolean chanced = Mathf.chance(produceChance);
-                if(chanced)craft();
+                if(chanced){craft();}
             }
 
             dumpOutputs();
