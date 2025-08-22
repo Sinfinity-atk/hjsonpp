@@ -22,12 +22,6 @@ public class GeneratorCoreBlock extends CoreBlock{
     }
 
     @Override
-    public void load(){
-        super.load();
-        uiIcon = fullIcon = Core.atlas.find(name + "-full");
-    }
-
-    @Override
     public void setBars(){
         super.setBars();
         addBar("poweroutput", (GeneratorCoreBlockBuild entity) ->
