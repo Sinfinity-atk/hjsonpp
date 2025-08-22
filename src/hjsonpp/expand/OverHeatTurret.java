@@ -10,7 +10,10 @@ import mindustry.ui.Bar;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
 
 public class OverHeatTurret extends ItemTurret{
+
     public float overheatAmount = 25f;
+
+    public float timeToCooldown = 240;
 
     public OverHeatTurret(String name){
         super(name);
@@ -43,9 +46,13 @@ public class OverHeatTurret extends ItemTurret{
         public void shoot(BulletType type){
             if(overHeat <= overheatAmount){
                 super.shoot(type);
-                overHeat += 0.35f * Time.delta;
+                overHeat += 0.7f * Time.delta;
             }else{
-                overHeat = 0;
+                if(timeToCooldown >= 0){
+                    timeToCooldown -= Time.delta;
+                }else{
+                    overHeat = 0;
+                }
             }
         }
 
