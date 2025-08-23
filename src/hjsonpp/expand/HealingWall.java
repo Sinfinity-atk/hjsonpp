@@ -5,7 +5,9 @@ import hjsonpp.expand.meta.AdditionalStats;
 import mindustry.world.blocks.defense.Wall;
 
 public class HealingWall extends Wall{
+    // reload between healing
     public float healReload = 1f;
+    // how much heal does wall recieve
     public float healPercent = 7f;
 
     public HealingWall(String name){
