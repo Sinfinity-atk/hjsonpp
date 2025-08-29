@@ -25,33 +25,20 @@ public class ColiderCrafter extends GenericCrafter{
 
     public class ColiderCrafterBuild extends  GenericCrafterBuild{
         @Override
-        public void updateTile(){
-            if(efficiency > 0){
-
-                progress += getProgressIncrease(craftTime);
-                warmup = Mathf.approachDelta(warmup, warmupTarget(), warmupSpeed);
-
-                if(outputLiquids != null){
-                    float inc = getProgressIncrease(1f);
-                    for(var output : outputLiquids){
-                        handleLiquid(this, output.liquid, Math.min(output.amount * inc, liquidCapacity - liquids.get(output.liquid)));
+        public void craft(){
+           consume();
+           boolean chanced = Mathf.chance(produceChance);
+            if(outputItems != null&chanced){
+                for(var output : outputItems){
+                    for(int i = 0; i < output.amount; i++){
+                        offload(output.item);
                     }
                 }
-
-                if(wasVisible && Mathf.chanceDelta(updateEffectChance)){
-                    updateEffect.at(x + Mathf.range(size * updateEffectSpread), y + Mathf.range(size * updateEffectSpread));
-                }
-            }else{
-                warmup = Mathf.approachDelta(warmup, 0f, warmupSpeed);
             }
-            totalProgress += warmup * Time.delta;
-
-            if(progress >= 1f){
-                boolean chanced = Mathf.chance(produceChance);
-                if(chanced){craft();}
+            if(wasVisible&chanced){
+                craftEffect.at(x, y);
             }
-            boolean chanced = Mathf.chance(produceChance);
-            if(chanced){dumpOutputs();}
+            progress %= 1f;
         }
     }
 }
