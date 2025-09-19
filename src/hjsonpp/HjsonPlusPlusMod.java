@@ -13,7 +13,7 @@ public class HjsonPlusPlusMod extends Mod{
         ClassMap.classes.put("ColliderCrafter", hjsonpp.expand.ColiderCrafter.class);
         ClassMap.classes.put("AccelTurret", hjsonpp.expand.AccelTurret.class);
         ClassMap.classes.put("OverHeatTurret", hjsonpp.expand.OverHeatTurret.class);
-        ClassMap.classes.put("RestorableWall", hjsonpp.expand.RestorableWall.class);
+        //ClassMap.classes.put("HealingWall", hjsonpp.expand.HealingWall.class);
         ClassMap.classes.put("AdjustableShieldWall", hjsonpp.expand.AdjustableShieldWall.class);
         ClassMap.classes.put("AdjustableBeamNode", hjsonpp.expand.AdjustableBeamNode.class);
         ClassMap.classes.put("TiledFloor", hjsonpp.expand.TiledFloor.class);
