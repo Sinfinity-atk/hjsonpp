@@ -20,5 +20,6 @@ public class HjsonPlusPlusMod extends Mod{
         ClassMap.classes.put("DrawTeam", hjsonpp.expand.DrawTeam.class);
         ClassMap.classes.put("EffectWeapon", hjsonpp.expand.EffectWeapon.class);
         ClassMap.classes.put("CustomEffects", hjsonpp.expand.CustomEffects.class);
+        ClassMap.classes.put("FullShieldWall", hjsonpp.expand.FullShieldWall.class);
     }
 }
