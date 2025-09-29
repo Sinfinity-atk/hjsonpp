@@ -123,10 +123,10 @@ public class FullShieldWall extends Wall {
             Draw.z(Layer.shields);
 
             if (useDefaultShieldTexture) {
-                // vanilla style: Lines.circle
+                // vanilla style: Fill.square
                 Draw.color(colorCached, shieldOpacity);
                 Lines.stroke(3f);
-                Lines.circle(x, y, r + Mathf.sin(Time.time / 6f, 3f, 1f));
+                Fill.square(x, y, r + Mathf.sin(Time.time / 6f, 3f, 1f));
             } else {
                 // solid fill
                 Draw.color(colorCached, shieldOpacity);
