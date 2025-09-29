@@ -3,102 +3,90 @@ package hjsonpp.expand;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
 import arc.math.Mathf;
-import arc.util.Time;
-import mindustry.content.Fx;
+import mindustry.Vars;
 import mindustry.entities.Units;
-import mindustry.entities.Units.UnitQuery;
-import mindustry.entities.bullet.BulletType;
-import mindustry.game.Team;
-import mindustry.gen.Building;
+import mindustry.entities.bullet.Bullet;
 import mindustry.gen.Groups;
-import mindustry.gen.Unit;
-import mindustry.type.Category;
+import mindustry.graphics.Layer;
 import mindustry.world.blocks.defense.Wall;
-import mindustry.world.blocks.defense.BaseShield;
+import mindustry.world.meta.BlockGroup;
 
-public class FullShieldWall extends BaseShield {
+public class FullShieldWall extends Wall {
 
-    public float shieldRadius = 100f;
-    public float shieldHealthCustom = 8000f;
-    public float cooldownNormalCustom = 0.1f;
-    public float cooldownBrokenBaseCustom = 0.02f;
-
-    public Color shieldColor = Color.valueOf("ffffff");
-    public float shieldOpacity = 0.3f;
-
+    public float shieldRadius = 60f;             // radius of the shield bubble
+    public float shieldHealthCustom = 8000f;     // shield HP
+    public float regenPerSec = 150f;             // shield regen per second
+    public float shieldOpacity = 0.25f;
+    public String shieldColor = "ffffff";
     public boolean absorbLasers = true;
     public boolean deflectBullets = true;
 
-    public FullShieldWall(String name) {
+    public FullShieldWall(String name){
         super(name);
-        category = Category.defense;
-        solid = true;
         update = true;
-        size = 2;
-        health = 10000;
-        armor = 20;
-
-        // default stats
-        this.buildType = FullShieldWallBuild::new;
+        solid = true;
+        group = BlockGroup.walls;
+        buildType = FullShieldWallBuild::new;
     }
 
-    public class FullShieldWallBuild extends BaseShieldBuild {
-        public float currentShield = shieldHealthCustom;
-        public Color colorCached;
+    public class FullShieldWallBuild extends WallBuild {
 
-        @Override
+        public float shield = shieldHealthCustom;
+        public Color colorCached = Color.valueOf(shieldColor);
+
         public void updateTile() {
-            super.updateTile();
-
-            // regen shield
-            if (currentShield < shieldHealthCustom) {
-                currentShield = Mathf.lerpDelta(currentShield, shieldHealthCustom, cooldownNormalCustom);
+            // simple regen
+            if(shield < shieldHealthCustom){
+                shield += regenPerSec * Vars.state.delta / 60f;
+                if(shield > shieldHealthCustom) shield = shieldHealthCustom;
             }
 
-            // unit blocking (basic pushback)
             float r = shieldRadius;
+
+            // stop bullets
+            Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (b) -> {
+                if (b.team == team) return;
+                float dx = b.x - x, dy = b.y - y;
+                if (dx * dx + dy * dy > r * r) return;
+
+                // absorb or deflect
+                if(deflectBullets){
+                    b.vel.setAngle(b.vel.angle() + 180f);
+                }else{
+                    b.remove();
+                }
+            });
+
+            // push units
             Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, u -> {
-                if (u != null && !u.dead() && u.within(this, r)) {
-                    float dx = u.x - x;
-                    float dy = u.y - y;
-                    float len = (float) Math.sqrt(dx * dx + dy * dy);
-                    if (len != 0f) {
-                        float push = 2f; // push strength
-                        u.vel.add(dx / len * push, dy / len * push);
-                    }
+                float dx = u.x - x, dy = u.y - y;
+                float dst2 = dx * dx + dy * dy;
+                if(dst2 < r * r){
+                    float ang = Mathf.angle(dx, dy);
+                    u.vel.add(Mathf.cosDeg(ang) * 0.4f, Mathf.sinDeg(ang) * 0.4f);
                 }
             });
         }
 
-        // removed @Override annotations:
-        public float realRadius() {
-            return shieldRadius;
-        }
-
-        public float shieldHealth() {
-            return currentShield;
-        }
-
-        public boolean absorbLasers() {
-            return absorbLasers;
-        }
-
-        public boolean deflectBullets() {
-            return deflectBullets;
-        }
-
-        @Override
         public void drawShield() {
             float r = shieldRadius;
             if (r <= 0f) return;
 
-            Draw.z(mindustry.graphics.Layer.block + 0.1f);
-            Color c = colorCached != null ? colorCached : shieldColor;
+            Draw.z(Layer.block + 0.1f);
+            Color c = colorCached != null ? colorCached : Color.white;
             Draw.color(c, shieldOpacity);
             Fill.circle(x, y, r);
+            Draw.color();
+            Lines.circle(x, y, r);
             Draw.reset();
-            super.drawShield();
+        }
+
+        @Override
+        public void draw() {
+            super.draw();
+            drawShield();
         }
     }
 }
