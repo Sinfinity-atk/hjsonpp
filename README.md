@@ -2,39 +2,39 @@
 
 # Hjson++
 
-a library that adds new classes to work with!
-classes that are added:
+A library that adds new classes to work with!
+Classes that are added:
 
-- AdvancedConsumeGenerator - you can now output items/liquids and make craft progress bar. 
+- AdvancedConsumeGenerator - you can now output items/liquids and make a craft progress bar. 
 variables: outputItem/Items/Liquid/Liquids, progressBar: true/false
-- AdvancedHeaterGenerator - basically the same version as HeaterGenerator but have same things as previous class
+- AdvancedHeaterGenerator - basically the same version as HeaterGenerator, but has the  same things as the previous class
 variables: outputItem/Items/Liquid/Liquids, progressBar (boolean)
 - TileGenerator - placeable on only specific tiles
 variables: filter: []
-- AdvancedCoreBlock - basically you can use drawers
+- AdvancedCoreBlock - basically, you can use drawers
 variables: drawers
-- GeneratorCoreBlock - basic core block but it can generate power
+- GeneratorCoreBlock - basic core block, but it can generate power
 variables: powerProduction: n
-- AccelTurret - turret which have acceleration
+- AccelTurret - a turret which have acceleration
 variables: speedUpPerShoot: n, maxAccel: n, cooldownSpeed: n
 - DrawTeam - drawer class. Draws -team sprite
 
 - ## NEW!
-- ColliderCrafter - basic GenericCrafter but it outputs items/liquids with specific chance.
+- ColliderCrafter - basic GenericCrafter, but it outputs items/liquids with a specific chance.
 variables: produceChance: n (1=100%)
-- OverHeatTurret - Turret which overheats after some shoots.
+- OverHeatTurret - A Turret that overheats after some shots.
 variables: overHeatAmount: n, timeToCooldown: n
-- AdjustableShieldWall - Basic shield wall, but you can turn it on and off. and can justify shield radius
+- AdjustableShieldWall - Basic shield wall, but you can turn it on and off., and can justify shield radius
 variables: radius: n
-- EffectWeapon - Weapon class where you can set a list of effects which will always be shown on unit. 
+- EffectWeapon - Weapon class where you can set a list of effects that will always be shown on the unit. 
 variables: effects: [], effectInterval: n, effectX: n, effectY: n
-- TiledFloor - deprecated Anuken class. Can make big floors (64x64 etc)
+- TiledFloor - deprecated Anuken class. Can make big floors (64x64, etc)
 variables: tilingVariants: n, tilingSize: n
-- AdjustableBeamNode - you can create infity nodes from beam node and change it angle
+- AdjustableBeamNode - you can create infinite nodes from a beam node and change its angle
 variables: beamDirections: [[n,n]]
-check examples folder for more information
+Check the examples folder for more information
 
-
-
+Wip
+FullShieldWall - A shielded wall that is much more customizable. You can change Values such as Shield shape, shield color, shield radius, wall Regen, unit blocking, etc.
 # WARNING
-this library is still WIP. report all errors to [IJT team mods discord server](https://discord.gg/btUe3rhGuQ)
+This is a personal forked repo. If you want, you can use it
