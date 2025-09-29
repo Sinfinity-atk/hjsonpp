@@ -90,7 +90,7 @@ public class FullShieldWall extends Wall {
                     if (dist2 < r * r) {
                         float dist = Mathf.sqrt(dist2);
                         if (dist < 1f) dist = 1f;
-                        float push = (r - dist) * 0.5f;
+                        float push = (r - dist) * 2f;
                         u.vel.add(dx / dist * push * Time.delta / 6f, dy / dist * push * Time.delta / 6f);
                     }
                 });
@@ -125,7 +125,7 @@ public class FullShieldWall extends Wall {
             if (useDefaultShieldTexture) {
                 // vanilla style: Fill.square
                 Draw.color(colorCached, shieldOpacity);
-                Lines.stroke(3f);
+                Lines.stroke(0f);
                 Fill.square(x, y, r + Mathf.sin(Time.time / 6f, 3f, 1f));
             } else {
                 // solid fill
