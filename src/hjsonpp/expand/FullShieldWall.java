@@ -6,14 +6,13 @@ import arc.graphics.g2d.Fill;
 import arc.math.Mathf;
 import arc.util.Time;
 import mindustry.Vars;
-import mindustry.content.Fx;
 import mindustry.entities.Lightning;
 import mindustry.entities.Units;
-import mindustry.gen.Teamc;
 import mindustry.gen.Unit;
 import mindustry.type.Category;
 import mindustry.world.Block;
 import mindustry.world.meta.BlockGroup;
+import mindustry.world.blocks.BlockBuild; // <-- correct base
 
 public class FullShieldWall extends Block {
 
@@ -42,7 +41,7 @@ public class FullShieldWall extends Block {
         destructible = true;
     }
 
-    public class FullShieldWallBuild extends Building {
+    public class FullShieldWallBuild extends BlockBuild {   // <-- was Building
 
         float shield = shieldHealth;
 
