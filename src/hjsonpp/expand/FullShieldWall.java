@@ -1,141 +1,102 @@
 package hjsonpp.expand;
 
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import mindustry.entities.*;
-import mindustry.gen.*;
-import mindustry.graphics.Layer;
-import mindustry.type.*;
-import mindustry.world.blocks.defense.Wall;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.math.Mathf;
+import arc.util.Time;
+import mindustry.Vars;
+import mindustry.content.Fx;
+import mindustry.entities.Lightning;
+import mindustry.entities.Units;
+import mindustry.gen.Teamc;
+import mindustry.gen.Unit;
+import mindustry.type.Category;
+import mindustry.world.Block;
+import mindustry.world.meta.BlockGroup;
 
-public class FullShieldWall extends Wall {
-    // Shield / wall config
+public class FullShieldWall extends Block {
+
     public float shieldRadius = 40f;
-    public float shieldOpacity = 0.2f;
-    public float regenPerSec = 20f;
-    public float wallRegenPerSec = 5f;
+    public float shieldHealth = 8000f;
+    public float regenPerSec = 100f;
+    public float pushStrength = 1.5f;
 
-    // pushback
-    public float pushStrength = 0.5f;
-    public int shieldBlockRadius = 2;         // 1=smaller 2=exact block 3=bigger
-    public float shieldBlockRadiusAmount = 1; // multiplier for small/large modes
-
-    // new properties
-    public boolean absorbLasers = false;
-    public boolean deflectBullets = false;
-
-    public boolean lightningOnHit = false;
+    public boolean lightningOnHit = true;
     public float lightningChance = 0.05f;
-    public int lightningDamage = 30;
+    public float lightningDamage = 40f;
 
-    public String shieldColor = "ffffff";
-    public Color colorCached = Color.white;
+    public Color shieldColor = Color.valueOf("7f7fff");
+    public float shieldOpacity = 0.4f;
+
+    // shape options
+    public int shieldBlockRadius = 2; // 1=smaller,2=equal,3=bigger
+    public float shieldBlockRadiusAmount = 1f;
 
     public FullShieldWall(String name) {
         super(name);
         update = true;
         solid = true;
-        configurable = false;
+        group = BlockGroup.walls;
+        category = Category.defense;
+        destructible = true;
     }
 
-    @Override
-    public void load() {
-        super.load();
-        try {
-            colorCached = Color.valueOf(shieldColor);
-        } catch (Exception e) {
-            colorCached = Color.white;
-        }
-    }
+    public class FullShieldWallBuild extends Building {
 
-    public class FullShieldWallBuild extends WallBuild {
-        public float shield = shieldRadius;
+        float shield = shieldHealth;
 
         @Override
         public void updateTile() {
-            // wall self-heal
-            if (health < maxHealth) {
-                heal(wallRegenPerSec * Time.delta / 60f);
+            // regen shield
+            if (shield < shieldHealth) {
+                shield += regenPerSec * Time.delta / 60f;
+                if (shield > shieldHealth) shield = shieldHealth;
             }
 
-            // shield regen
-            if (shield < shieldRadius) {
-                shield = Math.min(shieldRadius, shield + regenPerSec * Time.delta / 60f);
-            }
-
-            // compute push radius from block size + ShieldBlockRadius mode
-            float baseRadius = block.size * 8f / 2f; // tileSize * size /2
-            float r;
-            if (shieldBlockRadius == 1) {
-                r = baseRadius * shieldBlockRadiusAmount;
-            } else if (shieldBlockRadius == 3) {
-                r = baseRadius * shieldBlockRadiusAmount;
-            } else {
-                r = baseRadius; // exact size of block
-            }
-
-            // pushback units
-            Groups.unit.intersect(x - r, y - r, r * 2, r * 2, u -> {
-                if (u.team != team && !u.isFlying()) {
+            // push units in block area
+            float r = realRadius();
+            Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, u -> {
+                if (u.within(x, y, r)) {
+                    // push outward with fixed force
                     float dx = u.x - x;
                     float dy = u.y - y;
-                    float len = Mathf.len(dx, dy);
-                    if (len < r && len > 0.0001f) {
-                        dx /= len;
-                        dy /= len;
-                        // constant push regardless of distance
-                        u.vel.add(dx * pushStrength, dy * pushStrength);
+                    float len = (float) Math.sqrt(dx * dx + dy * dy);
+                    if (len < 0.001f) len = 0.001f;
+                    dx /= len;
+                    dy /= len;
+                    u.vel.add(dx * pushStrength, dy * pushStrength);
+                    // lightning effect like surge walls
+                    if (lightningOnHit && Mathf.chanceDelta(lightningChance)) {
+                        Lightning.create(team, shieldColor, lightningDamage, x, y, Mathf.random(360f), 10);
+                        u.damage(lightningDamage);
                     }
                 }
             });
+        }
 
-            // deflect bullets if enabled
-            if (deflectBullets || absorbLasers) {
-                float bulletRadius = r;
-                Groups.bullet.intersect(x - bulletRadius, y - bulletRadius, bulletRadius * 2f, bulletRadius * 2f, b -> {
-                    if (b.team != team) {
-                        // deflect vs absorb
-                        if (deflectBullets && Mathf.chanceDelta(1f)) {
-                            b.vel.setAngle(b.vel.angle() + 180f); // bounce back
-                        }
-                        if (absorbLasers && b.type.absorbable) {
-                            b.remove();
-                        }
-
-                        // lightning on hit
-                        if (lightningOnHit && Mathf.chanceDelta(lightningChance)) {
-                            try {
-                                Fx.lightningShoot.at(x, y);
-                                if (b.owner instanceof Unit u) {
-                                    u.damage(lightningDamage);
-                                }
-                            } catch (Throwable ignored) {
-                            }
-                        }
-                    }
-                });
+        public float realRadius() {
+            // decide actual radius based on shieldBlockRadius
+            float base = shieldRadius;
+            if (shieldBlockRadius == 1) {
+                base = size * Vars.tilesize / 2f * shieldBlockRadiusAmount;
+            } else if (shieldBlockRadius == 2) {
+                base = size * Vars.tilesize / 2f; // same as block
+            } else if (shieldBlockRadius == 3) {
+                base = size * Vars.tilesize / 2f * shieldBlockRadiusAmount;
             }
+            return base;
         }
 
         @Override
         public void draw() {
             super.draw();
 
-            // draw shield
-            float baseRadius = block.size * 8f / 2f;
-            float r;
-            if (shieldBlockRadius == 1) {
-                r = baseRadius * shieldBlockRadiusAmount;
-            } else if (shieldBlockRadius == 3) {
-                r = baseRadius * shieldBlockRadiusAmount;
-            } else {
-                r = baseRadius;
-            }
+            float r = realRadius();
+            if (r <= 0f) return;
 
-            Draw.z(Layer.block + 0.1f);
-            Color c = colorCached;
+            Draw.z(0.1f);
+            Color c = shieldColor;
             Draw.color(c, shieldOpacity);
             Fill.circle(x, y, r);
             Draw.reset();
