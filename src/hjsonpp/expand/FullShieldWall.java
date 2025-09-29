@@ -91,7 +91,7 @@ public class FullShieldWall extends Wall {
             // and apply a constant push (no gradient) using pushStrength.
             if (blockUnits) {
                 // push radius based on block size (half the block width in world units)
-                float pushR = (block.size * Vars.tilesize) / 2f;
+                float pushR = (block.size * Vars.tilesize);
 
                 Groups.unit.intersect(x - pushR, y - pushR, pushR * 2f, pushR * 2f, (Unit u) -> {
                     if (u.team == team || u.dead()) return;
