@@ -3,90 +3,99 @@ package hjsonpp.expand;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
-import arc.graphics.g2d.Lines;
 import arc.math.Mathf;
+import arc.util.Time;
+
 import mindustry.Vars;
-import mindustry.entities.Units;
-import mindustry.entities.bullet.Bullet;
+import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
 import mindustry.graphics.Layer;
 import mindustry.world.blocks.defense.Wall;
 import mindustry.world.meta.BlockGroup;
 
+/**
+ * A tunable shield wall block for Hjson++ mods.
+ * This acts like a wall but with a regenerating shield radius.
+ */
 public class FullShieldWall extends Wall {
 
-    public float shieldRadius = 60f;             // radius of the shield bubble
-    public float shieldHealthCustom = 8000f;     // shield HP
-    public float regenPerSec = 150f;             // shield regen per second
-    public float shieldOpacity = 0.25f;
-    public String shieldColor = "ffffff";
+    public float shieldRadius = 60f;       // pixels radius of the shield
+    public float shieldHealthCustom = 4000f;
+    public float regenPerSec = 20f;        // shield regen per second
+    public String shieldColor = "7f7fff";  // default color
+
     public boolean absorbLasers = true;
     public boolean deflectBullets = true;
 
-    public FullShieldWall(String name){
+    public FullShieldWall(String name) {
         super(name);
-        update = true;
-        solid = true;
         group = BlockGroup.walls;
-        buildType = FullShieldWallBuild::new;
+        solid = true;
+        update = true;
     }
 
     public class FullShieldWallBuild extends WallBuild {
 
         public float shield = shieldHealthCustom;
-        public Color colorCached = Color.valueOf(shieldColor);
+        public Color colorCached;
 
+        @Override
         public void updateTile() {
-            // simple regen
-            if(shield < shieldHealthCustom){
-                shield += regenPerSec * Vars.state.delta / 60f;
-                if(shield > shieldHealthCustom) shield = shieldHealthCustom;
+            // regen shield
+            if (shield < shieldHealthCustom) {
+                shield += regenPerSec * Time.delta / 60f;
+                if (shield > shieldHealthCustom) shield = shieldHealthCustom;
             }
 
+            // bullet interaction inside shield radius
             float r = shieldRadius;
+            if (r > 0f) {
+                Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (Bullet b) -> {
+                    if (b.team == team) return;
+                    float dx = b.x - x;
+                    float dy = b.y - y;
+                    if (dx * dx + dy * dy > r * r) return;
 
-            // stop bullets
-            Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (b) -> {
-                if (b.team == team) return;
-                float dx = b.x - x, dy = b.y - y;
-                if (dx * dx + dy * dy > r * r) return;
-
-                // absorb or deflect
-                if(deflectBullets){
-                    b.vel.setAngle(b.vel.angle() + 180f);
-                }else{
-                    b.remove();
-                }
-            });
-
-            // push units
-            Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, u -> {
-                float dx = u.x - x, dy = u.y - y;
-                float dst2 = dx * dx + dy * dy;
-                if(dst2 < r * r){
-                    float ang = Mathf.angle(dx, dy);
-                    u.vel.add(Mathf.cosDeg(ang) * 0.4f, Mathf.sinDeg(ang) * 0.4f);
-                }
-            });
+                    if (deflectBullets && Mathf.chanceDelta(100f)) {
+                        b.vel.setAngle(b.vel.angle() + 180f); // bounce back
+                    } else {
+                        try {
+                            b.remove();
+                        } catch (Throwable t) {
+                            // ignore
+                        }
+                    }
+                });
+            }
         }
 
-        public void drawShield() {
-            float r = shieldRadius;
-            if (r <= 0f) return;
+        public boolean absorbLasers() {
+            return FullShieldWall.this.absorbLasers;
+        }
 
-            Draw.z(Layer.block + 0.1f);
-            Color c = colorCached != null ? colorCached : Color.white;
-            Draw.color(c, shieldOpacity);
-            Fill.circle(x, y, r);
-            Draw.color();
-            Lines.circle(x, y, r);
-            Draw.reset();
+        public boolean deflectBullets() {
+            return FullShieldWall.this.deflectBullets;
         }
 
         @Override
         public void draw() {
             super.draw();
-            drawShield();
+
+            float r = shieldRadius;
+            if (r <= 0f) return;
+
+            if (colorCached == null) {
+                try {
+                    colorCached = Color.valueOf(FullShieldWall.this.shieldColor);
+                } catch (Exception ex) {
+                    colorCached = Color.white;
+                }
+            }
+
+            Draw.z(Layer.block + 0.1f);
+            Draw.color(colorCached, 0.3f);
+            Fill.circle(x, y, r);
+            Draw.color();
         }
     }
 }
