@@ -1,138 +1,147 @@
 package hjsonpp.expand;
 
-import arc.graphics.Color;
-import arc.graphics.g2d.Draw;
-import arc.graphics.g2d.Fill;
-import arc.graphics.g2d.Lines;
-import arc.math.Mathf;
-import arc.util.Time;
-
-import mindustry.gen.Bullet;
-import mindustry.gen.Groups;
-import mindustry.gen.Unit;
-import mindustry.graphics.Layer;
-import mindustry.graphics.Pal;
+import arc.*;
+import arc.graphics.*;
+import arc.graphics.g2d.*;
+import arc.math.*;
+import arc.util.*;
+import mindustry.entities.*;
+import mindustry.gen.*;
 import mindustry.world.blocks.defense.Wall;
-import mindustry.world.meta.BlockGroup;
 
 /**
- * Shield Wall with tunable properties.
+ * FullShieldWall – a damageable wall with integrated shield projector + unit blocking.
  */
 public class FullShieldWall extends Wall {
 
-    // --- tunables ---
-    public float shieldRadius = 60f;       // shield radius
-    public float shieldHealthCustom = 4000f;
-    public float regenPerSec = 20f;        // shield regen per second
-    public float wallRegenPerSec = 0f;     // new: wall HP regen per sec
-    public String shieldColor = "7f7fff";
-    public float shieldOpacity = 0.3f;     // new: opacity of shield circle
-    public boolean useDefaultShieldTexture = false; // new: draw wave style like vanilla projector
+    // ───── CONFIG FIELDS ─────
+    public float shieldRadius = 32f;
+    public float shieldOpacity = 0.4f;
+    public boolean shieldFill = true;
+    public float shieldThickness = 4f;
 
-    public boolean absorbLasers = true;
-    public boolean deflectBullets = true;
+    public boolean useForceTexture = false;  // use Mindustry force projector texture
+
     public boolean blockUnits = true;
+    public float pushStrength = 2f;
+
+    public float regenPerSec = 600f;        // shield regen
+    public float wallRegenPerSec = 100f;    // wall regen
+    public float shieldHealthCustom = 8000f;
+    public String shieldColor = "7f7fff";
+
+    // Shield-block-radius system
+    public int shieldBlockRadius = 2;          // 1=smaller, 2=equal, 3=bigger
+    public float shieldBlockRadiusAmount = 0.5f;
+
+    // internal
+    private Color colorCached;
+    private TextureRegion forceTex;
 
     public FullShieldWall(String name) {
         super(name);
-        group = BlockGroup.walls;
-        solid = true;
         update = true;
+        solid = true;
+    }
+
+    @Override
+    public void load() {
+        super.load();
+        try {
+            colorCached = Color.valueOf(shieldColor);
+        } catch (Exception ex) {
+            colorCached = Color.white;
+        }
+        if (useForceTexture) {
+            forceTex = Core.atlas.find("force-projector-shield", Core.atlas.find("clear")); // fallback
+        }
     }
 
     public class FullShieldWallBuild extends WallBuild {
-
         public float shield = shieldHealthCustom;
-        public Color colorCached;
 
         @Override
         public void updateTile() {
             // regen shield
             if (shield < shieldHealthCustom) {
-                shield += regenPerSec * Time.delta / 60f;
-                if (shield > shieldHealthCustom) shield = shieldHealthCustom;
+                shield = Math.min(shieldHealthCustom, shield + regenPerSec * Time.delta / 60f);
             }
-
             // regen wall HP
-            if (wallRegenPerSec > 0 && health < maxHealth) {
+            if (health < maxHealth) {
                 health = Math.min(maxHealth, health + wallRegenPerSec * Time.delta / 60f);
             }
 
-            float r = shieldRadius;
-
-            // bullet interaction
-            if (r > 0f) {
-                Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (Bullet b) -> {
-                    if (b.team == team) return;
-                    float dx = b.x - x;
-                    float dy = b.y - y;
-                    if (dx * dx + dy * dy > r * r) return;
-
-                    if (deflectBullets && Mathf.chanceDelta(100f)) {
-                        b.vel.setAngle(b.vel.angle() + 180f); // bounce back
-                    } else {
-                        try {
-                            b.remove();
-                        } catch (Throwable t) {
-                            // ignore
-                        }
-                    }
-                });
-            }
-
             // unit blocking
-            if (blockUnits && r > 0f) {
-                Groups.unit.intersect(x - r, y - r, r * 2f, r * 2f, (Unit u) -> {
+            if (blockUnits) {
+                float pushR = calcBlockRadius(); // push radius based on block size
+
+                Groups.unit.intersect(x - pushR, y - pushR, pushR * 2f, pushR * 2f, (Unit u) -> {
                     if (u.team == team || u.dead()) return;
+
                     float dx = u.x - x;
                     float dy = u.y - y;
                     float dist2 = dx * dx + dy * dy;
-                    if (dist2 < r * r) {
-                        float dist = Mathf.sqrt(dist2);
-                        if (dist < 1f) dist = 1f;
-                        float push = (r - dist) * 2f;
-                        u.vel.add(dx / dist * push * Time.delta / 6f, dy / dist * push * Time.delta / 6f);
-                    }
+                    if (dist2 > pushR * pushR) return;
+
+                    float dist = Mathf.sqrt(dist2);
+                    if (dist < 1f) dist = 1f;
+
+                    // constant push outward
+                    u.vel.add(dx / dist * pushStrength * Time.delta,
+                              dy / dist * pushStrength * Time.delta);
                 });
             }
         }
 
-        public boolean absorbLasers() {
-            return FullShieldWall.this.absorbLasers;
-        }
-
-        public boolean deflectBullets() {
-            return FullShieldWall.this.deflectBullets;
+        /** Calculate radius based on block size + ShieldBlockRadius setting */
+        private float calcBlockRadius() {
+            float base = (block.size * 8f) / 2f;
+            switch (shieldBlockRadius) {
+                case 1: // smaller
+                    return base * (1f - shieldBlockRadiusAmount);
+                case 2: // equal
+                    return base;
+                case 3: // bigger
+                    return base * (1f + shieldBlockRadiusAmount);
+                default:
+                    return base;
+            }
         }
 
         @Override
         public void draw() {
             super.draw();
+            drawShield();
+        }
 
-            float r = shieldRadius;
+        public void drawShield() {
+            float r;
+            // Use ShieldBlockRadius if 1–3, else fall back to shieldRadius
+            if (shieldBlockRadius >= 1 && shieldBlockRadius <= 3) {
+                r = calcBlockRadius();
+            } else {
+                r = shieldRadius;
+            }
+
             if (r <= 0f) return;
 
-            if (colorCached == null) {
-                try {
-                    colorCached = Color.valueOf(FullShieldWall.this.shieldColor);
-                } catch (Exception ex) {
-                    colorCached = Color.white;
+            Draw.z(Layer.block + 0.1f);
+            Color c = colorCached != null ? colorCached : Color.white;
+            Draw.color(c, shieldOpacity);
+
+            if (useForceTexture && forceTex != null) {
+                // Use Mindustry force projector texture
+                Draw.rect(forceTex, x, y, r * 2f, r * 2f);
+            } else {
+                // Draw as fill or ring
+                if (shieldFill) {
+                    Fill.circle(x, y, r);
+                } else {
+                    Lines.stroke(shieldThickness);
+                    Lines.circle(x, y, r);
+                    Lines.stroke(1f);
                 }
             }
-
-            Draw.z(Layer.shields);
-
-            if (useDefaultShieldTexture) {
-                // vanilla style: Fill.square
-                Draw.color(colorCached, shieldOpacity);
-                Lines.stroke(0f);
-                Fill.square(x, y, r + Mathf.sin(Time.time / 6f, 3f, 1f));
-            } else {
-                // solid fill
-                Draw.color(colorCached, shieldOpacity);
-                Fill.square(x, y, r);
-            }
-
             Draw.reset();
         }
     }
