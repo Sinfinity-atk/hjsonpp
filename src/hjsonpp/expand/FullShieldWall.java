@@ -3,6 +3,7 @@ package hjsonpp.expand;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
 import arc.math.Mathf;
 import arc.util.Time;
 
@@ -10,23 +11,27 @@ import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
 import mindustry.gen.Unit;
 import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
 import mindustry.world.blocks.defense.Wall;
 import mindustry.world.meta.BlockGroup;
 
 /**
- * A tunable shield wall block for Hjson++ mods.
- * This acts like a wall but with a regenerating shield radius and unit blocking.
+ * Shield Wall with tunable properties.
  */
 public class FullShieldWall extends Wall {
 
-    public float shieldRadius = 60f;       // pixels radius of the shield
+    // --- tunables ---
+    public float shieldRadius = 60f;       // shield radius
     public float shieldHealthCustom = 4000f;
     public float regenPerSec = 20f;        // shield regen per second
-    public String shieldColor = "7f7fff";  // default color
+    public float wallRegenPerSec = 0f;     // new: wall HP regen per sec
+    public String shieldColor = "7f7fff";
+    public float shieldOpacity = 0.3f;     // new: opacity of shield circle
+    public boolean useDefaultShieldTexture = false; // new: draw wave style like vanilla projector
 
     public boolean absorbLasers = true;
     public boolean deflectBullets = true;
-    public boolean blockUnits = true;      // new: block units inside shield
+    public boolean blockUnits = true;
 
     public FullShieldWall(String name) {
         super(name);
@@ -48,9 +53,14 @@ public class FullShieldWall extends Wall {
                 if (shield > shieldHealthCustom) shield = shieldHealthCustom;
             }
 
+            // regen wall HP
+            if (wallRegenPerSec > 0 && health < maxHealth) {
+                health = Math.min(maxHealth, health + wallRegenPerSec * Time.delta / 60f);
+            }
+
             float r = shieldRadius;
 
-            // bullet interaction inside shield radius
+            // bullet interaction
             if (r > 0f) {
                 Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (Bullet b) -> {
                     if (b.team == team) return;
@@ -70,7 +80,7 @@ public class FullShieldWall extends Wall {
                 });
             }
 
-            // unit blocking (like force projector)
+            // unit blocking
             if (blockUnits && r > 0f) {
                 Groups.unit.intersect(x - r, y - r, r * 2f, r * 2f, (Unit u) -> {
                     if (u.team == team || u.dead()) return;
@@ -110,10 +120,20 @@ public class FullShieldWall extends Wall {
                 }
             }
 
-            Draw.z(Layer.block + 0.1f);
-            Draw.color(colorCached, 0.3f);
-            Fill.square(x, y, r);
-            Draw.color();
+            Draw.z(Layer.shields);
+
+            if (useDefaultShieldTexture) {
+                // vanilla style: Lines.circle
+                Draw.color(colorCached, shieldOpacity);
+                Lines.stroke(3f);
+                Lines.circle(x, y, r + Mathf.sin(Time.time / 6f, 3f, 1f));
+            } else {
+                // solid fill
+                Draw.color(colorCached, shieldOpacity);
+                Fill.square(x, y, r);
+            }
+
+            Draw.reset();
         }
     }
 }
