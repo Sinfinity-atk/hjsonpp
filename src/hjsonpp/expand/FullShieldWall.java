@@ -9,7 +9,7 @@ import arc.util.Time;
 import arc.util.Tmp;
 
 import mindustry.entities.Units;
-import mindustry.entities.effect.Fx;
+import mindustry.entities.Fx;
 import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
 import mindustry.gen.Unit;
