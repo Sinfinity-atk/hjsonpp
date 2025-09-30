@@ -16,7 +16,8 @@ import mindustry.content.Fx;
 import mindustry.ui.Bar;
 import mindustry.world.blocks.defense.Wall;
 import mindustry.world.meta.BlockGroup;
-import mindustry.ui.Styles;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
@@ -29,7 +30,6 @@ public class FullShieldWall extends Wall {
     public float shieldHealthCustom = 4000f;
     public float regenPerSec = 20f;            // shield regen per second
     public float wallRegenPerSec = 0f;         // wall HP regen per sec
-    public float shieldDowntime = 300f;        // downtime (frames) after shield breaks
     public String shieldColor = "ffffff";
     public float shieldOpacity = 1f;
 
@@ -41,6 +41,8 @@ public class FullShieldWall extends Wall {
     public int shieldBlockRadius = 2;          // 0 = off, 1=smaller, 2=same, 3=larger
     public float shieldBlockRadiusAmount = 1f; // scale factor for small/large shield
 
+    public float shieldDowntime = 300f;        // downtime in ticks (60 = 1s)
+
     public FullShieldWall(String name) {
         super(name);
         group = BlockGroup.walls;
@@ -48,21 +50,39 @@ public class FullShieldWall extends Wall {
         update = true;
     }
 
+    @Override
+    public void setStats() {
+        super.setStats();
+
+        stats.add(Stat.shieldHealth, shieldHealthCustom, StatUnit.none);
+        stats.add(Stat.repairSpeed, regenPerSec, StatUnit.perSecond);
+
+        if (wallRegenPerSec > 0) {
+            stats.add(Stat.custom, "Wall Repair", wallRegenPerSec + "/s");
+        }
+
+        if (shieldDowntime > 0) {
+            stats.add(Stat.cooldownTime, shieldDowntime / 60f, StatUnit.seconds);
+        }
+    }
+
     public class FullShieldWallBuild extends WallBuild {
         public float shield = shieldHealthCustom;
-        public float cooldownTimer = 0f;
         public Color colorCached;
+        public float cooldownTimer = 0f;
 
         @Override
         public void updateTile() {
-            // handle downtime
+            float r = computeShieldRadius();
+
+            // if shield is broken, start cooldown
             if (shield <= 0f) {
-                cooldownTimer += Time.delta;
-                if (cooldownTimer >= shieldDowntime) {
-                    cooldownTimer = 0f;
-                    shield = 1f; // restart regen
+                if (cooldownTimer < shieldDowntime) {
+                    cooldownTimer += Time.delta;
+                    return; // skip regen until cooldown done
+                } else {
+                    shield = 0.01f; // tiny reset, regen starts next tick
                 }
-                return; // no shield activity during downtime
             }
 
             // shield regen
@@ -75,8 +95,6 @@ public class FullShieldWall extends Wall {
             if (wallRegenPerSec > 0 && health < maxHealth) {
                 health = Math.min(maxHealth, health + wallRegenPerSec * Time.delta / 60f);
             }
-
-            float r = computeShieldRadius();
 
             // bullet blocking (enemy only, consumes shield health)
             if (r > 0f && shield > 0f) {
@@ -92,6 +110,7 @@ public class FullShieldWall extends Wall {
 
                     if (shield <= 0f) {
                         shield = 0f;
+                        cooldownTimer = 0f;
                         Fx.shieldBreak.at(x, y, r, team.color);
                     }
                 });
@@ -156,11 +175,32 @@ public class FullShieldWall extends Wall {
         }
 
         @Override
+        public void displayBars(mindustry.ui.Table table) {
+            super.displayBars(table);
+
+            // Shield HP bar
+            table.add(new Bar(
+                () -> "Shield HP",
+                () -> Color.valueOf("ffff99"),
+                () -> shield / shieldHealthCustom
+            )).growX().row();
+
+            // Shield downtime bar (only when broken)
+            if (shield <= 0f && shieldDowntime > 0) {
+                table.add(new Bar(
+                    () -> "Shield Recharge",
+                    () -> Color.valueOf("ffff99"),
+                    () -> cooldownTimer / shieldDowntime
+                )).growX().row();
+            }
+        }
+
+        @Override
         public void draw() {
             super.draw();
 
             float r = computeShieldRadius();
-            if (r <= 0f || shield <= 0f) return; // don't draw during downtime
+            if (r <= 0f || shield <= 0f) return;
 
             if (colorCached == null) {
                 try {
@@ -180,40 +220,6 @@ public class FullShieldWall extends Wall {
             }
 
             Draw.reset();
-        }
-
-        // --- Stats for UI ---
-        @Override
-        public void buildConfiguration(mindustry.ui.Table table) {
-            super.buildConfiguration(table);
-
-            // Shield HP bar
-            table.row();
-            table.add(new Bar(
-                () -> "Shield HP",
-                () -> Color.valueOf("ffff99"),
-                () -> shield / shieldHealthCustom
-            )).growX();
-
-            // Shield repair text
-            table.row();
-            table.add("[lightgreen]Shield Repair: " + regenPerSec + "/s");
-
-            // Wall repair text
-            if (wallRegenPerSec > 0) {
-                table.row();
-                table.add("[lightgreen]Wall Repair: " + wallRegenPerSec + "/s");
-            }
-
-            // Shield downtime progress
-            if (shield <= 0f) {
-                table.row();
-                table.add(new Bar(
-                    () -> "Shield Recharge",
-                    () -> Color.valueOf("ffff99"),
-                    () -> cooldownTimer / shieldDowntime
-                )).growX();
-            }
         }
     }
 }
