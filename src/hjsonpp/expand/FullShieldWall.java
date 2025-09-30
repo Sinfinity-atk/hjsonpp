@@ -16,6 +16,7 @@ import mindustry.world.meta.BlockGroup;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
+ * Units are blocked by the wall footprint, not the shield.
  */
 public class FullShieldWall extends Wall {
 
@@ -27,7 +28,7 @@ public class FullShieldWall extends Wall {
     public String shieldColor = "7f7fff";
     public float shieldOpacity = 0.3f;
 
-    public boolean blockUnits = true;          // block units
+    public boolean blockUnits = true;          // block units on wall footprint
     public boolean pushUnits = false;          // push or stop units
 
     // --- NEW FIELDS ---
@@ -72,27 +73,26 @@ public class FullShieldWall extends Wall {
                 });
             }
 
-            // unit blocking
-            if (blockUnits && r > 0f) {
-                Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, (Unit u) -> {
+            // --- unit blocking is tied to wall footprint ---
+            if (blockUnits) {
+                float half = block.size * 8f; // half block size in world units
+                Units.nearbyEnemies(team, x - half, y - half, half * 2f, half * 2f, (Unit u) -> {
                     if (u.dead()) return;
 
-                    float dx = u.x - x;
-                    float dy = u.y - y;
-                    float dist2 = dx * dx + dy * dy;
-
-                    if (dist2 < r * r) {
-                        float dist = Mathf.sqrt(dist2);
-                        if (dist < 0.001f) dist = 0.001f;
-
+                    // check if unit is inside wall footprint
+                    if (Math.abs(u.x - x) < half && Math.abs(u.y - y) < half) {
                         if (pushUnits) {
-                            // push back mode
+                            // push them outward from block center
+                            float dx = u.x - x;
+                            float dy = u.y - y;
+                            float dist = Mathf.dst(dx, dy);
+                            if (dist < 0.001f) dist = 0.001f;
                             float push = 2f;
                             u.vel.add(dx / dist * push * Time.delta, dy / dist * push * Time.delta);
                         } else {
-                            // stop mode (hard edge)
-                            float edgeX = x + dx / dist * r;
-                            float edgeY = y + dy / dist * r;
+                            // stop & clamp to block edge
+                            float edgeX = Mathf.clamp(u.x, x - half, x + half);
+                            float edgeY = Mathf.clamp(u.y, y - half, y + half);
                             u.set(edgeX, edgeY);
                             u.vel.setZero();
                         }
@@ -101,7 +101,7 @@ public class FullShieldWall extends Wall {
             }
         }
 
-        // --- NEW: compute shield radius based on block size + shieldBlockRadius ---
+        // --- compute shield radius based on block size + shieldBlockRadius ---
         private float computeShieldRadius() {
             float base = block.size * 8f; // block size in world units
             if (shieldBlockRadius == 1) {
