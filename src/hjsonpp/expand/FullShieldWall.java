@@ -5,10 +5,13 @@ import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
 import arc.math.Mathf;
 import arc.util.Time;
+
 import mindustry.Vars;
 import mindustry.entities.Lightning;
 import mindustry.entities.Units;
+import mindustry.gen.Bullet;
 import mindustry.gen.Unit;
+import mindustry.gen.Groups;          // <-- correct import for v8
 import mindustry.world.blocks.defense.BaseShield;
 import mindustry.world.meta.BlockGroup;
 
@@ -86,38 +89,30 @@ public class FullShieldWall extends BaseShield {
                 health = Math.min(maxHealth, health + wallRegenPerSec * Time.delta / 60f);
             }
 
-            // If we want vanilla behavior for unit handling, just call super.updateTile(),
-            // which will let BaseShield run its own unitConsumer and bullet logic.
+            // If we want vanilla behavior for unit handling, just call super.updateTile()
             if(!push){
-                // Keep using BaseShield's full behavior (bullets + unit blocking)
                 super.updateTile();
                 return;
             }
 
-            // If push == true, we want to use BaseShield's bullet handling, but replace unit behavior
-            // with our constant push. We'll mimic enough of BaseShieldBuild.updateTile to use bulletConsumer.
-
-            // Smooth radius behavior similar to BaseShield
+            // If push == true, run bullet absorption + constant push
             smoothRadius = Mathf.lerpDelta(smoothRadius, FullShieldWall.this.radius * efficiency, 0.05f);
 
             float rad = radius(); // smoothed radius (used for bullet interception)
 
             if(rad > 1f){
-                // Use BaseShield's bulletConsumer (vanilla bullet absorption)
-                paramBuild = this; // BaseShield's consumers rely on this static paramBuild
-                Groups.bullet.intersect(x - rad, y - rad, rad * 2f, rad * 2f, BaseShield.bulletConsumer);
+                // FIX: Use Groups.bulletGroup instead of Groups.bullet
+                Groups.bulletGroup.intersect(x - rad, y - rad, rad * 2f, rad * 2f, BaseShield.bulletConsumer);
 
-                // Custom unit handling: constant push using block-size as push radius
+                // Custom unit blocking: constant push
                 if(blockUnits){
-                    float pushBase = (block.size * Vars.tilesize) / 2f;
+                    float pushBase = (block.size * Vars.tilesize);
                     float pushR;
-                    // decide push radius using same ShieldBlockRadius modes
                     if(shieldBlockRadius == 1) pushR = pushBase * (1f - shieldBlockRadiusAmount);
                     else if(shieldBlockRadius == 2) pushR = pushBase;
                     else pushR = pushBase * (1f + shieldBlockRadiusAmount);
 
-                    // Nearby enemies within pushR + small buffer
-                    Units.nearbyEnemies(team, x, y, pushR + 8f, u -> {
+                    Units.nearbyEnemies(team, x, y, pushR + 8f, (Unit u) -> {
                         if(u.team == team || u.dead()) return;
 
                         float dx = u.x - x;
@@ -127,37 +122,31 @@ public class FullShieldWall extends BaseShield {
                             float dist = Mathf.sqrt(dist2);
                             if(dist < 1f) dist = 1f;
 
-                            // CONSTANT push (frame-rate scaled)
+                            // CONSTANT push
                             u.vel.add(dx / dist * pushStrength * Time.delta, dy / dist * pushStrength * Time.delta);
 
-                            // optional surge lightning effect/damage
                             if(lightningOnHit && Mathf.chanceDelta(lightningChance)){
-                                try{
-                                    Lightning.create(team, parsedColor, lightningDamage, x, y, Mathf.random(360f), 10);
-                                } catch(Throwable t){}
+                                Lightning.create(team, parsedColor, lightningDamage, x, y, Mathf.random(360f), 10);
                                 u.damage(lightningDamage);
                             }
                         }
                     });
                 }
             }
-            // don't call super.updateTile() because we already ran bulletConsumer and replaced unit behavior
         }
 
         @Override
         public void draw(){
-            // Let BaseShield draw the base visuals (it handles the animated shield)
             super.draw();
 
-            // If BaseShield visuals are disabled or you want a fallback ring/fill, draw it
+            float r = radius();
+            if(r <= 0f) return;
+
             if(!shieldFill){
-                float r = radius();
-                if(r > 0f){
-                    Draw.z(50f);
-                    Draw.color(parsedColor, FullShieldWall.this.shieldOpacity);
-                    Fill.circle(x, y, r);
-                    Draw.reset();
-                }
+                Draw.z(50f);
+                Draw.color(parsedColor, FullShieldWall.this.shieldOpacity);
+                Fill.circle(x, y, r);
+                Draw.reset();
             }
         }
     }
