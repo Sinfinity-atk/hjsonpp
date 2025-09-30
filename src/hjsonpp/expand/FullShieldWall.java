@@ -97,7 +97,7 @@ public class FullShieldWall extends Wall {
                     });
                 } else if ("block".equalsIgnoreCase(blockUnitsFrom)) {
                     // block footprint-based blocking
-                    Units.nearbyEnemies(team, tile.drawx(), tile.drawy(), block.size * 8f, block.size * 8f, (Unit unit) -> {
+                    Units.nearbyEnemies(team, tile.drawx(), tile.drawy(), block.size * 16f, block.size * 16f, (Unit unit) -> {
                         if (unit.within(x, y, block.size * 16f)) {
                             unit.vel.setZero();
                             unit.move(Tmp.v1.set(unit).sub(this).setLength(1f)); // push slightly out
