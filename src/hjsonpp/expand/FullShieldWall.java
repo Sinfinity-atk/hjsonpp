@@ -5,18 +5,20 @@ import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
 import arc.math.Mathf;
 import arc.util.Time;
+import arc.util.Tmp;
 
 import mindustry.entities.Units;
 import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
 import mindustry.gen.Unit;
 import mindustry.graphics.Layer;
+import mindustry.content.Fx;
 import mindustry.world.blocks.defense.Wall;
 import mindustry.world.meta.BlockGroup;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
- * Units are blocked by the wall footprint, not the shield.
+ * Units are blocked using BaseShield logic (kill if inside, repel otherwise).
  */
 public class FullShieldWall extends Wall {
 
@@ -25,16 +27,15 @@ public class FullShieldWall extends Wall {
     public float shieldHealthCustom = 4000f;
     public float regenPerSec = 20f;            // shield regen per second
     public float wallRegenPerSec = 0f;         // wall HP regen per sec
-    public String shieldColor = "7f7fff";
-    public float shieldOpacity = 0.3f;
+    public String shieldColor = "ffffff";
+    public float shieldOpacity = 1f;
 
-    public boolean blockUnits = true;          // block units on wall footprint
-    public boolean pushUnits = false;          // push or stop units
+    public boolean blockUnits = true;          // block units using BaseShield logic
 
     // --- NEW FIELDS ---
-    public String shieldShape = "circle";      // "circle" or "square"
-    public int shieldBlockRadius = 0;          // 0 = off, 1=smaller, 2=same, 3=larger
-    public float shieldBlockRadiusAmount = 0.5f; // scale factor for small/large shield
+    public String shieldShape = "square";      // "circle" or "square"
+    public int shieldBlockRadius = 2;          // 0 = off, 1=smaller, 2=same, 3=larger
+    public float shieldBlockRadiusAmount = 1f; // scale factor for small/large shield
 
     public FullShieldWall(String name) {
         super(name);
@@ -73,28 +74,24 @@ public class FullShieldWall extends Wall {
                 });
             }
 
-            // --- unit blocking is tied to wall footprint ---
-            if (blockUnits) {
-                float half = block.size * 8f; // half block size in world units
-                Units.nearbyEnemies(team, x - half, y - half, half * 2f, half * 2f, (Unit u) -> {
-                    if (u.dead()) return;
+            // unit blocking (BaseShield-style)
+            if (blockUnits && r > 0f) {
+                Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, (Unit unit) -> {
+                    float overlapDst = (unit.hitSize / 2f + r) - unit.dst(this);
 
-                    // check if unit is inside wall footprint
-                    if (Math.abs(u.x - x) < half && Math.abs(u.y - y) < half) {
-                        if (pushUnits) {
-                            // push them outward from block center
-                            float dx = u.x - x;
-                            float dy = u.y - y;
-                            float dist = Mathf.dst(dx, dy);
-                            if (dist < 0.001f) dist = 0.001f;
-                            float push = 2f;
-                            u.vel.add(dx / dist * push * Time.delta, dy / dist * push * Time.delta);
+                    if (overlapDst > 0) {
+                        if (overlapDst > unit.hitSize * 1.5f) {
+                            // insta-kill if too far inside
+                            unit.kill();
                         } else {
-                            // stop & clamp to block edge
-                            float edgeX = Mathf.clamp(u.x, x - half, x + half);
-                            float edgeY = Mathf.clamp(u.y, y - half, y + half);
-                            u.set(edgeX, edgeY);
-                            u.vel.setZero();
+                            // stop
+                            unit.vel.setZero();
+                            // push out
+                            unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
+
+                            if (Mathf.chanceDelta(0.12f * Time.delta)) {
+                                Fx.circleColorSpark.at(unit.x, unit.y, team.color);
+                            }
                         }
                     }
                 });
