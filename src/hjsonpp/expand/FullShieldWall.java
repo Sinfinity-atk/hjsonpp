@@ -5,11 +5,12 @@ import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
 import arc.graphics.g2d.Lines;
 import arc.math.Mathf;
+import arc.math.geom.Vec2;
 import arc.util.Time;
 
+import mindustry.Vars;
 import mindustry.entities.Lightning;
 import mindustry.entities.Units;
-import mindustry.game.Vars;
 import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
 import mindustry.gen.Unit;
@@ -115,7 +116,7 @@ public class FullShieldWall extends Wall {
                         }else{
                             // stop-solid like BaseShield
                             u.vel.setZero();
-                            u.impulseNet(-dx / dist * 0.1f, -dy / dist * 0.1f);
+                            u.impulseNet(new Vec2(-dx / dist * 0.1f, -dy / dist * 0.1f));
                         }
 
                         // optional lightning effect
