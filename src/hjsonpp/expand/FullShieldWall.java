@@ -106,7 +106,7 @@ public class FullShieldWall extends Wall {
                     }
                 }
                 if ("block".equalsIgnoreCase(blockUnitsFrom) || "both".equalsIgnoreCase(blockUnitsFrom)) {
-                    float br = block.size * 8f;
+                    float br = block.size * 4f;
                     Units.nearbyEnemies(team, x - br, y - br, br * 2f, br * 2f, (Unit unit) -> {
                         float overlapDst = (unit.hitSize / 2f + br) - unit.dst(this);
 
