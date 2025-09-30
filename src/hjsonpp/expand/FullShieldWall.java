@@ -3,151 +3,174 @@ package hjsonpp.expand;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
 import arc.math.Mathf;
 import arc.util.Time;
 
-import mindustry.Vars;
 import mindustry.entities.Lightning;
 import mindustry.entities.Units;
+import mindustry.game.Vars;
 import mindustry.gen.Bullet;
+import mindustry.gen.Groups;
 import mindustry.gen.Unit;
-import mindustry.gen.Groups;          // <-- correct import for v8
-import mindustry.world.blocks.defense.BaseShield;
+import mindustry.graphics.Layer;
+import mindustry.world.blocks.defense.Wall;
 import mindustry.world.meta.BlockGroup;
 
 /**
- * FullShieldWall (BaseShield-backed) with a Push toggle.
- *
- * - If push == true -> apply our constant push behavior (pushStrength).
- * - If push == false -> defer to BaseShield's default unit-handling (stops movement like vanilla).
+ * Shield Wall with tunable properties.
  */
-public class FullShieldWall extends BaseShield {
+public class FullShieldWall extends Wall {
 
-    // ---- Tunables (editable from HJSON) ----
-    public float shieldRadius = 60f;                // fallback radius if shieldBlockRadius not used
+    // --- tunables ---
+    public float shieldRadius = 60f;       // shield radius (ignored if ShieldBlockRadius set)
+    public float shieldHealthCustom = 4000f;
+    public float regenPerSec = 20f;        // shield regen per second
+    public float wallRegenPerSec = 0f;     // wall HP regen per sec
     public String shieldColor = "7f7fff";
-    public float shieldOpacity = 0.35f;
-    public boolean shieldFill = true;               // fallback drawing choice (if used)
-    public boolean useForceTexture = false;         // prefer engine shield visuals (usually true)
+    public float shieldOpacity = 0.3f;     // opacity of shield circle
+    public boolean useDefaultShieldTexture = false; // vanilla projector style
 
-    public float regenPerSec = 20f;                 // shield regen
-    public float wallRegenPerSec = 0f;              // wall health regen
+    public boolean absorbLasers = true;
+    public boolean deflectBullets = true;
+    public boolean blockUnits = true;
 
-    // Unit-blocking / push settings
-    public boolean blockUnits = true;               // master switch for blocking
-    public boolean push = false;                     // **NEW TOGGLE**: true => custom push, false => vanilla stop
-    public float pushStrength = 2f;                 // constant push force (when push==true)
+    // --- new push toggle ---
+    public boolean pushUnits = false;   // true = push, false = stop-solid
+    public float pushStrength = 1.5f;  // force applied if pushUnits = true
 
-    // ShieldBlockRadius system
-    public int shieldBlockRadius = 2;               // 1 = smaller, 2 = same as block, 3 = bigger
-    public float shieldBlockRadiusAmount = 0.5f;
+    // --- shield block radius options ---
+    public int shieldBlockRadius = 2;      // 1=smaller, 2=equal, 3=bigger
+    public float shieldBlockRadiusAmount = 0.5f; // how much smaller/bigger
 
-    // Lightning / surge options (optional)
+    // --- lightning effects ---
     public boolean lightningOnHit = false;
-    public float lightningChance = 0.02f;
-    public int lightningDamage = 30;
+    public float lightningChance = 0.05f;
+    public float lightningDamage = 10f;
 
-    // parsed color
-    protected Color parsedColor = Color.valueOf("7f7fff");
-
-    public FullShieldWall(String name){
+    public FullShieldWall(String name) {
         super(name);
-        update = true;
-        solid = true;
         group = BlockGroup.walls;
+        solid = true;
+        update = true;
     }
 
-    @Override
-    public void load(){
-        super.load();
-        try {
-            parsedColor = Color.valueOf(shieldColor);
-        } catch(Exception e){
-            parsedColor = Color.white;
-        }
-    }
+    public class FullShieldWallBuild extends WallBuild {
 
-    public class FullShieldWallBuild extends BaseShield.BaseShieldBuild {
+        public float shield = shieldHealthCustom;
+        public Color colorCached;
+
         @Override
-        public void updateTile(){
-            // compute desired shield radius using ShieldBlockRadius system (if enabled)
-            float desiredShieldRadius;
-            if(shieldBlockRadius >= 1 && shieldBlockRadius <= 3){
-                float base = (block.size * Vars.tilesize);
-                if(shieldBlockRadius == 1) desiredShieldRadius = base * (1f - shieldBlockRadiusAmount);
-                else if(shieldBlockRadius == 2) desiredShieldRadius = base;
-                else desiredShieldRadius = base * (1f + shieldBlockRadiusAmount);
-            } else {
-                desiredShieldRadius = FullShieldWall.this.shieldRadius;
+        public void updateTile() {
+            // regen shield
+            if(shield < shieldHealthCustom){
+                shield += regenPerSec * Time.delta / 60f;
+                if(shield > shieldHealthCustom) shield = shieldHealthCustom;
             }
 
-            // assign to block radius so BaseShield code uses it
-            FullShieldWall.this.radius = desiredShieldRadius;
-
-            // wall HP regen (keeps current behaviour if any)
-            if(wallRegenPerSec > 0f && health < maxHealth){
+            // regen wall HP
+            if(wallRegenPerSec > 0 && health < maxHealth){
                 health = Math.min(maxHealth, health + wallRegenPerSec * Time.delta / 60f);
             }
 
-            // If we want vanilla behavior for unit handling, just call super.updateTile()
-            if(!push){
-                super.updateTile();
-                return;
+            // bullet interaction
+            float r = realShieldRadius();
+            if(r > 0f){
+                Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (Bullet b) -> {
+                    if(b.team == team) return;
+                    float dx = b.x - x;
+                    float dy = b.y - y;
+                    if(dx * dx + dy * dy > r * r) return;
+
+                    if(deflectBullets && Mathf.chanceDelta(100f)){
+                        b.vel.setAngle(b.vel.angle() + 180f); // bounce back
+                    }else{
+                        try{
+                            b.remove();
+                        }catch(Throwable t){
+                            // ignore
+                        }
+                    }
+                });
             }
 
-            // If push == true, run bullet absorption + constant push
-            smoothRadius = Mathf.lerpDelta(smoothRadius, FullShieldWall.this.radius * efficiency, 0.05f);
+            // unit blocking
+            if(blockUnits && r > 0f){
+                Units.nearbyEnemies(team, x, y, r + 8f, (Unit u) -> {
+                    if(u.team == team || u.dead()) return;
 
-            float rad = radius(); // smoothed radius (used for bullet interception)
+                    float dx = u.x - x;
+                    float dy = u.y - y;
+                    float dist2 = dx * dx + dy * dy;
 
-            if(rad > 1f){
-                // FIX: Use Groups.bulletGroup instead of Groups.bullet
-                Groups.bullet.intersect(x - rad, y - rad, rad * 2f, rad * 2f, BaseShield.bulletConsumer);
+                    if(dist2 < r * r){
+                        float dist = Mathf.sqrt(dist2);
+                        if(dist < 1f) dist = 1f;
 
-                // Custom unit blocking: constant push
-                if(blockUnits){
-                    float pushBase = (block.size * Vars.tilesize);
-                    float pushR;
-                    if(shieldBlockRadius == 1) pushR = pushBase * (1f - shieldBlockRadiusAmount);
-                    else if(shieldBlockRadius == 2) pushR = pushBase;
-                    else pushR = pushBase * (1f + shieldBlockRadiusAmount);
-
-                    Units.nearbyEnemies(team, x, y, pushR + 8f, (Unit u) -> {
-                        if(u.team == team || u.dead()) return;
-
-                        float dx = u.x - x;
-                        float dy = u.y - y;
-                        float dist2 = dx*dx + dy*dy;
-                        if(dist2 < pushR * pushR){
-                            float dist = Mathf.sqrt(dist2);
-                            if(dist < 1f) dist = 1f;
-
-                            // CONSTANT push
-                            u.vel.add(dx / dist * pushStrength * Time.delta, dy / dist * pushStrength * Time.delta);
-
-                            if(lightningOnHit && Mathf.chanceDelta(lightningChance)){
-                                Lightning.create(team, parsedColor, lightningDamage, x, y, Mathf.random(360f), 10);
-                                u.damage(lightningDamage);
-                            }
+                        if(pushUnits){
+                            // constant push (not gradient)
+                            float px = dx / dist * pushStrength * Time.delta;
+                            float py = dy / dist * pushStrength * Time.delta;
+                            u.vel.add(px, py);
+                        }else{
+                            // stop-solid like BaseShield
+                            u.vel.setZero();
+                            u.impulseNet(-dx / dist * 0.1f, -dy / dist * 0.1f);
                         }
-                    });
-                }
+
+                        // optional lightning effect
+                        if(lightningOnHit && Mathf.chanceDelta(lightningChance)){
+                            Lightning.create(team, parsedColor(), lightningDamage, x, y, Mathf.random(360f), 10);
+                            u.damage(lightningDamage);
+                        }
+                    }
+                });
             }
         }
+
+        // --- helpers ---
+        private float realShieldRadius(){
+            float base = (block.size * Vars.tilesize);
+            if(shieldBlockRadius == 1) return base * (1f - shieldBlockRadiusAmount);
+            if(shieldBlockRadius == 2) return base;
+            if(shieldBlockRadius == 3) return base * (1f + shieldBlockRadiusAmount);
+            return shieldRadius;
+        }
+
+        private Color parsedColor(){
+            if(colorCached == null){
+                try{
+                    colorCached = Color.valueOf(FullShieldWall.this.shieldColor);
+                }catch(Exception ex){
+                    colorCached = Color.white;
+                }
+            }
+            return colorCached;
+        }
+
+        public boolean absorbLasers(){ return FullShieldWall.this.absorbLasers; }
+        public boolean deflectBullets(){ return FullShieldWall.this.deflectBullets; }
 
         @Override
         public void draw(){
             super.draw();
 
-            float r = radius();
+            float r = realShieldRadius();
             if(r <= 0f) return;
 
-            if(!shieldFill){
-                Draw.z(50f);
-                Draw.color(parsedColor, FullShieldWall.this.shieldOpacity);
+            Draw.z(Layer.shields);
+
+            Color c = parsedColor();
+            if(useDefaultShieldTexture){
+                Draw.color(c, shieldOpacity);
+                Lines.stroke(0f);
+                Fill.square(x, y, r + Mathf.sin(Time.time / 6f, 3f, 1f));
+            }else{
+                Draw.color(c, shieldOpacity);
                 Fill.circle(x, y, r);
-                Draw.reset();
             }
+
+            Draw.reset();
         }
     }
 }
