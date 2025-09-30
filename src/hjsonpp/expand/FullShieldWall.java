@@ -116,13 +116,7 @@ public class FullShieldWall extends Wall {
                         }else{
                             // stop-solid like BaseShield
                             u.vel.setZero();
-                            u.impulseNet(new Vec2(-dx / dist * 0.1f, -dy / dist * 0.1f));
-                        }
-
-                        // optional lightning effect
-                        if(lightningOnHit && Mathf.chanceDelta(lightningChance)){
-                            Lightning.create(team, parsedColor(), lightningDamage, x, y, Mathf.random(360f), 10);
-                            u.damage(lightningDamage);
+                            u.impulseNet(new Vec2(-dx / dist * 0.4f, -dy / dist * 0.4f));
                         }
                     }
                 });
