@@ -102,7 +102,7 @@ public class FullShieldWall extends BaseShield {
 
             if(rad > 1f){
                 // FIX: Use Groups.bulletGroup instead of Groups.bullet
-                Groups.bulletGroup.intersect(x - rad, y - rad, rad * 2f, rad * 2f, BaseShield.bulletConsumer);
+                Groups.bullet.intersect(x - rad, y - rad, rad * 2f, rad * 2f, BaseShield.bulletConsumer);
 
                 // Custom unit blocking: constant push
                 if(blockUnits){
