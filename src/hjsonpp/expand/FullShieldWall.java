@@ -112,7 +112,7 @@ public class FullShieldWall extends Wall {
 
         // --- compute shield radius based on block size + shieldBlockRadius ---
         private float computeShieldRadius() {
-            float base = block.size * 8f; // block size in world units
+            float base = block.size * 16f; // block size in world units
             if (shieldBlockRadius == 1) {
                 return base * shieldBlockRadiusAmount; // smaller
             } else if (shieldBlockRadius == 2) {
