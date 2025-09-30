@@ -18,7 +18,7 @@ import mindustry.world.meta.BlockGroup;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
- * Units can be blocked by either the shield or the wall footprint.
+ * Blocks bullets with shield health, and units with BaseShield-style logic.
  */
 public class FullShieldWall extends Wall {
 
@@ -31,7 +31,7 @@ public class FullShieldWall extends Wall {
     public float shieldOpacity = 1f;
 
     public boolean blockUnits = true;          // enable/disable unit blocking
-    public String blockUnitsFrom = "shield";   // "shield" or "block"
+    public String blockUnitsFrom = "shield";   // "shield", "block", or "both"
 
     // --- NEW FIELDS ---
     public String shieldShape = "square";      // "circle" or "square"
@@ -64,27 +64,55 @@ public class FullShieldWall extends Wall {
 
             float r = computeShieldRadius();
 
-            // bullet blocking (only enemy projectiles)
-            if (r > 0f) {
+            // bullet blocking (enemy only, consumes shield health)
+            if (r > 0f && shield > 0f) {
                 Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (Bullet b) -> {
                     if (b.team == team) return; // ignore friendly bullets
                     float dx = b.x - x;
                     float dy = b.y - y;
                     if (dx * dx + dy * dy > r * r) return;
-                    b.remove(); // absorb enemy bullet
+
+                    // absorb + reduce shield health
+                    b.remove();
+                    shield -= b.damage;
+
+                    if (shield <= 0f) {
+                        shield = 0f;
+                        Fx.shieldBreak.at(x, y, r, team.color);
+                    }
                 });
             }
 
             // --- unit blocking ---
             if (blockUnits) {
-                if ("shield".equalsIgnoreCase(blockUnitsFrom) && r > 0f) {
-                    // shield-based blocking (BaseShield-style)
-                    Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, (Unit unit) -> {
-                        float overlapDst = (unit.hitSize / 2f + r) - unit.dst(this);
+                if ("shield".equalsIgnoreCase(blockUnitsFrom) || "both".equalsIgnoreCase(blockUnitsFrom)) {
+                    if (r > 0f) {
+                        Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, (Unit unit) -> {
+                            float overlapDst = (unit.hitSize / 2f + r) - unit.dst(this);
+
+                            if (overlapDst > 0) {
+                                if (overlapDst > unit.hitSize * 1.5f) {
+                                    unit.kill();
+                                } else {
+                                    unit.vel.setZero();
+                                    unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
+
+                                    if (Mathf.chanceDelta(0.12f * Time.delta)) {
+                                        Fx.circleColorSpark.at(unit.x, unit.y, team.color);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+                if ("block".equalsIgnoreCase(blockUnitsFrom) || "both".equalsIgnoreCase(blockUnitsFrom)) {
+                    float br = block.size * 8f;
+                    Units.nearbyEnemies(team, x - br, y - br, br * 2f, br * 2f, (Unit unit) -> {
+                        float overlapDst = (unit.hitSize / 2f + br) - unit.dst(this);
 
                         if (overlapDst > 0) {
                             if (overlapDst > unit.hitSize * 1.5f) {
-                                unit.kill(); // insta-kill if too deep inside
+                                unit.kill();
                             } else {
                                 unit.vel.setZero();
                                 unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
@@ -92,17 +120,6 @@ public class FullShieldWall extends Wall {
                                 if (Mathf.chanceDelta(0.12f * Time.delta)) {
                                     Fx.circleColorSpark.at(unit.x, unit.y, team.color);
                                 }
-                            }
-                        }
-                    });
-                } else if ("block".equalsIgnoreCase(blockUnitsFrom)) {
-                    // block footprint-based blocking
-                    Units.nearbyEnemies(team, tile.drawx(), tile.drawy(), block.size * 4f, block.size * 4f, (Unit unit) -> {
-                        if (unit.within(x, y, block.size * 16f)) {
-                            unit.vel.setZero();
-                            unit.move(Tmp.v1.set(unit).sub(this).setLength(1.4f)); // push slightly out
-                            if (Mathf.chanceDelta(0.12f * Time.delta)) {
-                                Fx.circleColorSpark.at(unit.x, unit.y, team.color);
                             }
                         }
                     });
