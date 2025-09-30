@@ -98,7 +98,7 @@ public class FullShieldWall extends Wall {
                 } else if ("block".equalsIgnoreCase(blockUnitsFrom)) {
                     // block footprint-based blocking
                     Units.nearbyEnemies(team, tile.drawx(), tile.drawy(), block.size * 8f, block.size * 8f, (Unit unit) -> {
-                        if (unit.within(x, y, block.size * 8f)) {
+                        if (unit.within(x, y, block.size * 16f)) {
                             unit.vel.setZero();
                             unit.move(Tmp.v1.set(unit).sub(this).setLength(1f)); // push slightly out
                             if (Mathf.chanceDelta(0.12f * Time.delta)) {
@@ -112,7 +112,7 @@ public class FullShieldWall extends Wall {
 
         // --- compute shield radius based on block size + shieldBlockRadius ---
         private float computeShieldRadius() {
-            float base = block.size * 16f; // block size in world units
+            float base = block.size * 8f; // block size in world units
             if (shieldBlockRadius == 1) {
                 return base * shieldBlockRadiusAmount; // smaller
             } else if (shieldBlockRadius == 2) {
