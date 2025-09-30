@@ -13,8 +13,10 @@ import mindustry.gen.Groups;
 import mindustry.gen.Unit;
 import mindustry.graphics.Layer;
 import mindustry.content.Fx;
+import mindustry.ui.Bar;
 import mindustry.world.blocks.defense.Wall;
 import mindustry.world.meta.BlockGroup;
+import mindustry.ui.Styles;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
@@ -27,6 +29,7 @@ public class FullShieldWall extends Wall {
     public float shieldHealthCustom = 4000f;
     public float regenPerSec = 20f;            // shield regen per second
     public float wallRegenPerSec = 0f;         // wall HP regen per sec
+    public float shieldDowntime = 300f;        // downtime (frames) after shield breaks
     public String shieldColor = "ffffff";
     public float shieldOpacity = 1f;
 
@@ -47,10 +50,21 @@ public class FullShieldWall extends Wall {
 
     public class FullShieldWallBuild extends WallBuild {
         public float shield = shieldHealthCustom;
+        public float cooldownTimer = 0f;
         public Color colorCached;
 
         @Override
         public void updateTile() {
+            // handle downtime
+            if (shield <= 0f) {
+                cooldownTimer += Time.delta;
+                if (cooldownTimer >= shieldDowntime) {
+                    cooldownTimer = 0f;
+                    shield = 1f; // restart regen
+                }
+                return; // no shield activity during downtime
+            }
+
             // shield regen
             if (shield < shieldHealthCustom) {
                 shield += regenPerSec * Time.delta / 60f;
@@ -106,7 +120,7 @@ public class FullShieldWall extends Wall {
                     }
                 }
                 if ("block".equalsIgnoreCase(blockUnitsFrom) || "both".equalsIgnoreCase(blockUnitsFrom)) {
-                    float br = block.size * 4f;
+                    float br = block.size * 8f;
                     Units.nearbyEnemies(team, x - br, y - br, br * 2f, br * 2f, (Unit unit) -> {
                         float overlapDst = (unit.hitSize / 2f + br) - unit.dst(this);
 
@@ -146,7 +160,7 @@ public class FullShieldWall extends Wall {
             super.draw();
 
             float r = computeShieldRadius();
-            if (r <= 0f) return;
+            if (r <= 0f || shield <= 0f) return; // don't draw during downtime
 
             if (colorCached == null) {
                 try {
@@ -166,6 +180,40 @@ public class FullShieldWall extends Wall {
             }
 
             Draw.reset();
+        }
+
+        // --- Stats for UI ---
+        @Override
+        public void buildConfiguration(mindustry.ui.Table table) {
+            super.buildConfiguration(table);
+
+            // Shield HP bar
+            table.row();
+            table.add(new Bar(
+                () -> "Shield HP",
+                () -> Color.valueOf("ffff99"),
+                () -> shield / shieldHealthCustom
+            )).growX();
+
+            // Shield repair text
+            table.row();
+            table.add("[lightgreen]Shield Repair: " + regenPerSec + "/s");
+
+            // Wall repair text
+            if (wallRegenPerSec > 0) {
+                table.row();
+                table.add("[lightgreen]Wall Repair: " + wallRegenPerSec + "/s");
+            }
+
+            // Shield downtime progress
+            if (shield <= 0f) {
+                table.row();
+                table.add(new Bar(
+                    () -> "Shield Recharge",
+                    () -> Color.valueOf("ffff99"),
+                    () -> cooldownTimer / shieldDowntime
+                )).growX();
+            }
         }
     }
 }
