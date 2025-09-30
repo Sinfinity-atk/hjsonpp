@@ -97,10 +97,10 @@ public class FullShieldWall extends Wall {
                     });
                 } else if ("block".equalsIgnoreCase(blockUnitsFrom)) {
                     // block footprint-based blocking
-                    Units.nearbyEnemies(team, tile.drawx(), tile.drawy(), block.size * 16f, block.size * 16f, (Unit unit) -> {
+                    Units.nearbyEnemies(team, tile.drawx(), tile.drawy(), block.size * 4f, block.size * 4f, (Unit unit) -> {
                         if (unit.within(x, y, block.size * 16f)) {
                             unit.vel.setZero();
-                            unit.move(Tmp.v1.set(unit).sub(this).setLength(1f)); // push slightly out
+                            unit.move(Tmp.v1.set(unit).sub(this).setLength(1.4f)); // push slightly out
                             if (Mathf.chanceDelta(0.12f * Time.delta)) {
                                 Fx.circleColorSpark.at(unit.x, unit.y, team.color);
                             }
