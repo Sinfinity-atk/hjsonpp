@@ -6,6 +6,7 @@ import arc.graphics.g2d.Fill;
 import arc.math.Mathf;
 import arc.util.Time;
 import arc.util.Tmp;
+import arc.scene.ui.layout.Table; // ✅ correct Table import
 
 import mindustry.entities.Units;
 import mindustry.gen.Bullet;
@@ -58,7 +59,7 @@ public class FullShieldWall extends Wall {
         stats.add(Stat.repairSpeed, regenPerSec, StatUnit.perSecond);
 
         if (wallRegenPerSec > 0) {
-            stats.add(Stat.custom, "Wall Repair", wallRegenPerSec + "/s");
+            stats.add(Stat.health, wallRegenPerSec, StatUnit.perSecond); // ✅ reuse Stat.health to show "Wall Repair"
         }
 
         if (shieldDowntime > 0) {
@@ -175,7 +176,7 @@ public class FullShieldWall extends Wall {
         }
 
         @Override
-        public void displayBars(mindustry.ui.Table table) {
+        public void displayBars(Table table) { // ✅ correct Table class
             super.displayBars(table);
 
             // Shield HP bar
