@@ -51,15 +51,15 @@ public class FullShieldWall extends Wall {
         update = true;
     }
 
-   @Override
+@Override
 public void setStats(){
     super.setStats();
 
     stats.add(Stat.abilities, String.format(Locale.ROOT, "Shield HP: %.0f", shieldHealthCustom));
-    stats.add(Stat.custom, "Shield Repair " + (int)regenPerSec + "/s");
-    stats.add(Stat.custom, "Shield Downtime " + String.format(Locale.ROOT, "%.1fs", shieldDowntime / 60f));
-    if(wallRegenPerSec > 0f){
-        stats.add(Stat.custom, "Wall Repair " + (int)wallRegenPerSec + "/s");
+    stats.add(Stat.abilities, "\nShield Repair " + (int)regenPerSec + "/s");
+    stats.add(Stat.abilities, "\nShield Downtime " + String.format(Locale.ROOT, "%.1fs", shieldDowntime / 60f));
+    if (wallRegenPerSec > 0f) {
+        stats.add(Stat.abilities, "\nWall Repair " + (int)wallRegenPerSec + "/s");
     }
 }
 
