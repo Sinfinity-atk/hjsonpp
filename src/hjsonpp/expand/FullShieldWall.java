@@ -52,18 +52,20 @@ public class FullShieldWall extends Wall {
         update = true;
     }
 
-    @Override
-    public void setStats(){
-        super.setStats();
+@Override
+public void setStats(){
+    super.setStats();
 
-        stats.add(Stat.health, String.format(Locale.ROOT, "%.0f Shield HP", shieldHealthCustom));
-        stats.add(Stat.reload, String.format(Locale.ROOT, "Shield Repair %.0f/s", regenPerSec));
-        stats.add(Stat.cooldownTime, String.format(Locale.ROOT, "Shield Downtime %.1fs", shieldDowntime / 60f));
+    // Show shield properties
+    stats.add(Stat.health, String.format(Locale.ROOT, "%.0f Shield HP", shieldHealthCustom));
+    stats.add(Stat.reload, String.format(Locale.ROOT, "Shield Repair %.0f/s", regenPerSec));
+    stats.add(Stat.cooldownTime, String.format(Locale.ROOT, "Shield Downtime %.1fs", shieldDowntime / 60f));
 
-        if(wallRegenPerSec > 0f){
-            stats.add(Stat.reload, String.format(Locale.ROOT, "Wall Repair %.0f/s", wallRegenPerSec));
-        }
+    // Show wall repair separately
+    if(wallRegenPerSec > 0f){
+        stats.add(Stat.reload, String.format(Locale.ROOT, "Wall Repair %.0f/s", wallRegenPerSec));
     }
+}
 
     public class FullShieldWallBuild extends WallBuild {
         public float shield = shieldHealthCustom;
