@@ -17,6 +17,7 @@ import mindustry.ui.Bar;
 import mindustry.world.blocks.defense.Wall;
 import mindustry.world.meta.BlockGroup;
 import mindustry.world.meta.Stat;
+import arc.scene.ui.layout.Table;
 
 import java.util.Locale;
 
@@ -198,7 +199,7 @@ public class FullShieldWall extends Wall {
 
         // --- Info Bars ---
         @Override
-        public void displayBars(mindustry.ui.Table table) {
+        public void displayBars(Table table) {
             super.displayBars(table);
 
             // Shield HP
