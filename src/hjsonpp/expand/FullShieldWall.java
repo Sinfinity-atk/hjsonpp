@@ -186,14 +186,19 @@ public class FullShieldWall extends Wall {
                 () -> shield / shieldHealthCustom
             )).growX().row();
 
-            // Shield downtime bar (only when broken)
-            if (shield <= 0f && shieldDowntime > 0) {
-                table.add(new Bar(
-                    () -> "Shield Recharge",
-                    () -> Color.valueOf("ffff99"),
-                    () -> cooldownTimer / shieldDowntime
-                )).growX().row();
-            }
+// Shield downtime bar (always visible, with countdown in seconds)
+table.add(new Bar(
+    () -> {
+        if(shield > 0f){
+            return "Shield Active";
+        }else{
+            int secs = (int)((shieldDowntime - cooldownTimer) / 60f); // 60 ticks = 1s
+            return "Shield Recharging (" + secs + "s)";
+        }
+    },
+    () -> shield > 0f ? Color.valueOf("99ff99") : Color.valueOf("ffff99"),
+    () -> shield > 0f ? 1f : (cooldownTimer / shieldDowntime)
+)).growX().row();
         }
 
         @Override
