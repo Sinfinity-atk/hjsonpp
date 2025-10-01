@@ -7,8 +7,6 @@ import arc.math.Mathf;
 import arc.util.Time;
 import arc.util.Tmp;
 
-import arc.scene.ui.layout.Table;
-
 import mindustry.entities.Units;
 import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
@@ -52,20 +50,17 @@ public class FullShieldWall extends Wall {
         update = true;
     }
 
-@Override
-public void setStats(){
-    super.setStats();
+    @Override
+    public void setStats(){
+        super.setStats();
 
-    // Show shield properties
-    stats.add(Stat.health, String.format(Locale.ROOT, "%.0f Shield HP", shieldHealthCustom));
-    stats.add(Stat.reload, String.format(Locale.ROOT, "Shield Repair %.0f/s", regenPerSec));
-    stats.add(Stat.cooldownTime, String.format(Locale.ROOT, "Shield Downtime %.1fs", shieldDowntime / 60f));
-
-    // Show wall repair separately
-    if(wallRegenPerSec > 0f){
-        stats.add(Stat.reload, String.format(Locale.ROOT, "Wall Repair %.0f/s", wallRegenPerSec));
+        stats.add(Stat.abilities, String.format(Locale.ROOT, "Shield HP: %.0f", shieldHealthCustom));
+        stats.add(Stat.abilities, String.format(Locale.ROOT, "Shield Repair %.0f/s", regenPerSec));
+        stats.add(Stat.abilities, String.format(Locale.ROOT, "Shield Downtime %.1fs", shieldDowntime / 60f));
+        if (wallRegenPerSec > 0f) {
+            stats.add(Stat.abilities, String.format(Locale.ROOT, "Wall Repair %.0f/s", wallRegenPerSec));
+        }
     }
-}
 
     public class FullShieldWallBuild extends WallBuild {
         public float shield = shieldHealthCustom;
@@ -203,7 +198,7 @@ public void setStats(){
 
         // --- Info Bars ---
         @Override
-        public void displayBars(Table table) {
+        public void displayBars(mindustry.ui.Table table) {
             super.displayBars(table);
 
             // Shield HP
