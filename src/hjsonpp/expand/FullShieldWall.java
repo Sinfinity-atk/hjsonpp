@@ -23,7 +23,8 @@ import java.util.Locale;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
- * Blocks bullets with shield health, and units with BaseShield-style logic.
+ * Blocks bullets, explosions, lasers, and unit crash damage with shield health,
+ * and blocks units with BaseShield-style logic.
  */
 public class FullShieldWall extends Wall {
 
@@ -153,6 +154,33 @@ public class FullShieldWall extends Wall {
                         }
                     });
                 }
+            }
+        }
+
+        // --- absorb explosions, lasers, direct block-target damage ---
+        @Override
+        public boolean damage(float damage){
+            if(shield > 0f){
+                shield -= damage;
+                if(shield <= 0f){
+                    shield = 0f;
+                    Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
+                }
+                return false; // prevent block HP damage while shield is up
+            }
+            return super.damage(damage);
+        }
+
+        @Override
+        public void damagePierce(float damage){
+            if(shield > 0f){
+                shield -= damage;
+                if(shield <= 0f){
+                    shield = 0f;
+                    Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
+                }
+            }else{
+                super.damagePierce(damage);
             }
         }
 
