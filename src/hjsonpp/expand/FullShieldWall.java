@@ -23,10 +23,7 @@ import java.util.Locale;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
- * Shield phases:
- *  - Active: absorbs projectiles until shield breaks
- *  - Downtime: wall takes damage, shield regenerates after cooldown
- *  - Recharging: shield refills but wall still takes damage until full
+ * Shield absorbs all projectiles until broken, then wall takes damage during downtime and recharge.
  */
 public class FullShieldWall extends Wall {
 
@@ -74,21 +71,20 @@ public class FullShieldWall extends Wall {
 
         @Override
         public void updateTile() {
-            // --- downtime ---
+            // shield downtime + recharge logic
             if (shield <= 0f) {
                 cooldownTimer += Time.delta;
                 if (cooldownTimer >= shieldDowntime) {
-                    // enter recharge phase
-                    shield = 0.01f;
-                    cooldownTimer = 0f;
+                    // after downtime, shield recharges from 0 to full
+                    shield += regenPerSec * Time.delta / 60f;
+                    if (shield > shieldHealthCustom) {
+                        shield = shieldHealthCustom;
+                    }
                 }
-            }
-            // --- recharge phase ---
-            else if (shield < shieldHealthCustom) {
+            } else if (shield < shieldHealthCustom) {
+                // if shield is partially damaged but >0, keep repairing
                 shield += regenPerSec * Time.delta / 60f;
-                if (shield > shieldHealthCustom) {
-                    shield = shieldHealthCustom; // fully active
-                }
+                if (shield > shieldHealthCustom) shield = shieldHealthCustom;
             }
 
             // wall HP regen
@@ -98,11 +94,12 @@ public class FullShieldWall extends Wall {
 
             float r = computeShieldRadius();
 
-            // projectile blocking (enemy only, consumes shield health)
-            if (r > 0f && shield >= shieldHealthCustom) {
+            // bullet blocking (enemy only, consumes shield health)
+            if (r > 0f && shield > 0f) {
                 Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (Bullet b) -> {
-                    if (b.team == team) return;
-                    float dx = b.x - x, dy = b.y - y;
+                    if (b.team == team) return; // ignore friendly bullets
+                    float dx = b.x - x;
+                    float dy = b.y - y;
                     if (dx * dx + dy * dy > r * r) return;
 
                     // absorb + reduce shield health
@@ -111,6 +108,7 @@ public class FullShieldWall extends Wall {
 
                     if (shield <= 0f) {
                         shield = 0f;
+                        cooldownTimer = 0f; // start downtime
                         Fx.shieldBreak.at(x, y, r, team.color);
                     }
                 });
@@ -129,6 +127,7 @@ public class FullShieldWall extends Wall {
                                 } else {
                                     unit.vel.setZero();
                                     unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
+
                                     if (Mathf.chanceDelta(0.12f * Time.delta)) {
                                         Fx.circleColorSpark.at(unit.x, unit.y, team.color);
                                     }
@@ -141,12 +140,14 @@ public class FullShieldWall extends Wall {
                     float br = block.size * 8f;
                     Units.nearbyEnemies(team, x - br, y - br, br * 2f, br * 2f, (Unit unit) -> {
                         float overlapDst = (unit.hitSize / 2f + br) - unit.dst(this);
+
                         if (overlapDst > 0) {
                             if (overlapDst > unit.hitSize * 1.5f) {
                                 unit.kill();
                             } else {
                                 unit.vel.setZero();
                                 unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
+
                                 if (Mathf.chanceDelta(0.12f * Time.delta)) {
                                     Fx.circleColorSpark.at(unit.x, unit.y, team.color);
                                 }
@@ -157,28 +158,28 @@ public class FullShieldWall extends Wall {
             }
         }
 
-        // --- Damage Handling ---
+        // --- damage handling ---
         @Override
         public void damage(float damage){
-            if (shield >= shieldHealthCustom){
-                // active shield absorbs
+            if (shield > 0f){
                 shield -= damage;
                 if (shield <= 0f){
                     shield = 0f;
+                    cooldownTimer = 0f;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
             } else {
-                // downtime or recharge: wall takes damage
                 super.damage(damage);
             }
         }
 
         @Override
         public void damagePierce(float damage){
-            if (shield >= shieldHealthCustom){
+            if (shield > 0f){
                 shield -= damage;
                 if (shield <= 0f){
                     shield = 0f;
+                    cooldownTimer = 0f;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
             } else {
@@ -188,11 +189,16 @@ public class FullShieldWall extends Wall {
 
         // --- compute shield radius based on block size + shieldBlockRadius ---
         private float computeShieldRadius() {
-            float base = block.size * 8f;
-            if (shieldBlockRadius == 1) return base * shieldBlockRadiusAmount;
-            if (shieldBlockRadius == 2) return base;
-            if (shieldBlockRadius == 3) return base * (1f + shieldBlockRadiusAmount);
-            return shieldRadius;
+            float base = block.size * 8f; // block size in world units
+            if (shieldBlockRadius == 1) {
+                return base * shieldBlockRadiusAmount; // smaller
+            } else if (shieldBlockRadius == 2) {
+                return base; // exactly block size
+            } else if (shieldBlockRadius == 3) {
+                return base * (1f + shieldBlockRadiusAmount); // larger
+            } else {
+                return shieldRadius; // fallback
+            }
         }
 
         @Override
@@ -234,24 +240,23 @@ public class FullShieldWall extends Wall {
                     () -> shield / shieldHealthCustom
             )).row();
 
-            // Shield Status
+            // Shield Status / Downtime
             table.add(new Bar(
                     () -> {
-                        if (shield >= shieldHealthCustom) {
+                        if (shield > 0f) {
                             return "Shield Active";
-                        } else if (shield > 0f) {
-                            return "Shield Recharging";
-                        } else {
+                        } else if (cooldownTimer < shieldDowntime) {
                             float timeLeft = Math.max(0f, shieldDowntime - cooldownTimer) / 60f;
-                            return String.format(Locale.ROOT, "Shield Downtime (%.1fs)", timeLeft);
+                            return String.format(Locale.ROOT, "Shield Recharging (%.1fs)", timeLeft);
+                        } else {
+                            return "Shield Repairing";
                         }
                     },
-                    () -> shield >= shieldHealthCustom ? Color.valueOf("77ff77") :
-                          (shield > 0f ? Color.valueOf("77ccff") : Color.valueOf("ffff77")),
+                    () -> shield > 0f ? Color.valueOf("77ff77") : Color.valueOf("ffff77"),
                     () -> {
-                        if (shield >= shieldHealthCustom) return 1f;
-                        if (shield > 0f) return shield / shieldHealthCustom;
-                        return cooldownTimer / shieldDowntime;
+                        if (shield > 0f) return 1f;
+                        else if (cooldownTimer < shieldDowntime) return cooldownTimer / shieldDowntime;
+                        else return shield / shieldHealthCustom;
                     }
             )).row();
 
