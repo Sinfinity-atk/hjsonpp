@@ -23,8 +23,10 @@ import java.util.Locale;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
- * Blocks bullets, explosions, lasers, and unit crash damage with shield health,
- * and blocks units with BaseShield-style logic.
+ * Shield phases:
+ *  - Active: absorbs projectiles until shield breaks
+ *  - Downtime: wall takes damage, shield regenerates after cooldown
+ *  - Recharging: shield refills but wall still takes damage until full
  */
 public class FullShieldWall extends Wall {
 
@@ -72,18 +74,20 @@ public class FullShieldWall extends Wall {
 
         @Override
         public void updateTile() {
-            // handle downtime
+            // --- downtime ---
             if (shield <= 0f) {
                 cooldownTimer += Time.delta;
                 if (cooldownTimer >= shieldDowntime) {
-                    shield = 1f; // restart shield after downtime
+                    // enter recharge phase
+                    shield = 0.01f;
                     cooldownTimer = 0f;
                 }
-            } else {
-                // shield regen
-                if (shield < shieldHealthCustom) {
-                    shield += regenPerSec * Time.delta / 60f;
-                    if (shield > shieldHealthCustom) shield = shieldHealthCustom;
+            }
+            // --- recharge phase ---
+            else if (shield < shieldHealthCustom) {
+                shield += regenPerSec * Time.delta / 60f;
+                if (shield > shieldHealthCustom) {
+                    shield = shieldHealthCustom; // fully active
                 }
             }
 
@@ -94,12 +98,11 @@ public class FullShieldWall extends Wall {
 
             float r = computeShieldRadius();
 
-            // bullet blocking (enemy only, consumes shield health)
-            if (r > 0f && shield > 0f) {
+            // projectile blocking (enemy only, consumes shield health)
+            if (r > 0f && shield >= shieldHealthCustom) {
                 Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (Bullet b) -> {
-                    if (b.team == team) return; // ignore friendly bullets
-                    float dx = b.x - x;
-                    float dy = b.y - y;
+                    if (b.team == team) return;
+                    float dx = b.x - x, dy = b.y - y;
                     if (dx * dx + dy * dy > r * r) return;
 
                     // absorb + reduce shield health
@@ -126,7 +129,6 @@ public class FullShieldWall extends Wall {
                                 } else {
                                     unit.vel.setZero();
                                     unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
-
                                     if (Mathf.chanceDelta(0.12f * Time.delta)) {
                                         Fx.circleColorSpark.at(unit.x, unit.y, team.color);
                                     }
@@ -139,14 +141,12 @@ public class FullShieldWall extends Wall {
                     float br = block.size * 8f;
                     Units.nearbyEnemies(team, x - br, y - br, br * 2f, br * 2f, (Unit unit) -> {
                         float overlapDst = (unit.hitSize / 2f + br) - unit.dst(this);
-
                         if (overlapDst > 0) {
                             if (overlapDst > unit.hitSize * 1.5f) {
                                 unit.kill();
                             } else {
                                 unit.vel.setZero();
                                 unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
-
                                 if (Mathf.chanceDelta(0.12f * Time.delta)) {
                                     Fx.circleColorSpark.at(unit.x, unit.y, team.color);
                                 }
@@ -157,47 +157,42 @@ public class FullShieldWall extends Wall {
             }
         }
 
-// --- absorb explosions, lasers, direct block-target damage ---
+        // --- Damage Handling ---
         @Override
         public void damage(float damage){
-            if(shield > 0f){
+            if (shield >= shieldHealthCustom){
+                // active shield absorbs
                 shield -= damage;
-                if(shield <= 0f){
+                if (shield <= 0f){
                     shield = 0f;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-                // do NOT pass damage to block while shield is up
-            }else{
+            } else {
+                // downtime or recharge: wall takes damage
                 super.damage(damage);
             }
         }
 
         @Override
         public void damagePierce(float damage){
-            if(shield > 0f){
+            if (shield >= shieldHealthCustom){
                 shield -= damage;
-                if(shield <= 0f){
+                if (shield <= 0f){
                     shield = 0f;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-                // still absorbed by shield
-            }else{
+            } else {
                 super.damagePierce(damage);
             }
         }
 
         // --- compute shield radius based on block size + shieldBlockRadius ---
         private float computeShieldRadius() {
-            float base = block.size * 8f; // block size in world units
-            if (shieldBlockRadius == 1) {
-                return base * shieldBlockRadiusAmount; // smaller
-            } else if (shieldBlockRadius == 2) {
-                return base; // exactly block size
-            } else if (shieldBlockRadius == 3) {
-                return base * (1f + shieldBlockRadiusAmount); // larger
-            } else {
-                return shieldRadius; // fallback
-            }
+            float base = block.size * 8f;
+            if (shieldBlockRadius == 1) return base * shieldBlockRadiusAmount;
+            if (shieldBlockRadius == 2) return base;
+            if (shieldBlockRadius == 3) return base * (1f + shieldBlockRadiusAmount);
+            return shieldRadius;
         }
 
         @Override
@@ -239,18 +234,25 @@ public class FullShieldWall extends Wall {
                     () -> shield / shieldHealthCustom
             )).row();
 
-            // Shield Status / Downtime
+            // Shield Status
             table.add(new Bar(
                     () -> {
-                        if (shield > 0f) {
+                        if (shield >= shieldHealthCustom) {
                             return "Shield Active";
+                        } else if (shield > 0f) {
+                            return "Shield Recharging";
                         } else {
                             float timeLeft = Math.max(0f, shieldDowntime - cooldownTimer) / 60f;
-                            return String.format(Locale.ROOT, "Shield Recharging (%.1fs)", timeLeft);
+                            return String.format(Locale.ROOT, "Shield Downtime (%.1fs)", timeLeft);
                         }
                     },
-                    () -> shield > 0f ? Color.valueOf("77ff77") : Color.valueOf("ffff77"),
-                    () -> shield > 0f ? 1f : cooldownTimer / shieldDowntime
+                    () -> shield >= shieldHealthCustom ? Color.valueOf("77ff77") :
+                          (shield > 0f ? Color.valueOf("77ccff") : Color.valueOf("ffff77")),
+                    () -> {
+                        if (shield >= shieldHealthCustom) return 1f;
+                        if (shield > 0f) return shield / shieldHealthCustom;
+                        return cooldownTimer / shieldDowntime;
+                    }
             )).row();
 
             // Shield Repair Speed
