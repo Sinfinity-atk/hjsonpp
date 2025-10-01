@@ -157,18 +157,19 @@ public class FullShieldWall extends Wall {
             }
         }
 
-        // --- absorb explosions, lasers, direct block-target damage ---
+// --- absorb explosions, lasers, direct block-target damage ---
         @Override
-        public boolean damage(float damage){
+        public void damage(float damage){
             if(shield > 0f){
                 shield -= damage;
                 if(shield <= 0f){
                     shield = 0f;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-                return false; // prevent block HP damage while shield is up
+                // do NOT pass damage to block while shield is up
+            }else{
+                super.damage(damage);
             }
-            return super.damage(damage);
         }
 
         @Override
@@ -179,6 +180,7 @@ public class FullShieldWall extends Wall {
                     shield = 0f;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
+                // still absorbed by shield
             }else{
                 super.damagePierce(damage);
             }
