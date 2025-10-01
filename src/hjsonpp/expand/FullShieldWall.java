@@ -6,6 +6,7 @@ import arc.graphics.g2d.Fill;
 import arc.math.Mathf;
 import arc.util.Time;
 import arc.util.Tmp;
+import arc.scene.ui.layout.Table;
 
 import mindustry.entities.Units;
 import mindustry.gen.Bullet;
@@ -185,7 +186,7 @@ public class FullShieldWall extends Wall {
 
         // --- Info Bars ---
         @Override
-        public void displayBars(mindustry.ui.Table table) {
+        public void displayBars(Table table) {
             super.displayBars(table);
 
             // Shield HP
