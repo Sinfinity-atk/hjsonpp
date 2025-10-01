@@ -185,7 +185,7 @@ public class FullShieldWall extends Wall {
 
         // --- Info Bars ---
         @Override
-        public void displayBars(mindustry.ui.Table table) {
+        public void displayBars(Table table) {
             super.displayBars(table);
 
             // Shield HP
