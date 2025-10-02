@@ -76,11 +76,9 @@ public class FullShieldWall extends Wall {
                 if (cooldownTimer < shieldDowntime) {
                     cooldownTimer += Time.delta;
                 } else {
-                    // recharge shield
-                    if (shield < shieldHealthCustom) {
-                        shield += regenPerSec * Time.delta / 60f;
-                        if (shield > shieldHealthCustom) shield = shieldHealthCustom;
-                    }
+                    // downtime over, recharge shield gradually
+                    shield += regenPerSec * Time.delta / 60f;
+                    if (shield > shieldHealthCustom) shield = shieldHealthCustom;
                 }
             } else {
                 // normal shield regen
@@ -111,7 +109,7 @@ public class FullShieldWall extends Wall {
 
                     if (shield <= 0f) {
                         shield = 0f;
-                        cooldownTimer = 0f; // start downtime only once
+                        cooldownTimer = 0f; // start downtime once
                         Fx.shieldBreak.at(x, y, r, team.color);
                     }
                 });
@@ -164,35 +162,29 @@ public class FullShieldWall extends Wall {
         // Shield damage handling
         @Override
         public void damage(float damage){
-            if(shield > 0f){
+            if (shield > 0f) {
                 shield -= damage;
-                if(shield <= 0f){
+                if (shield <= 0f) {
                     shield = 0f;
-                    cooldownTimer = 0f; // enter downtime once
+                    cooldownTimer = 0f; // enter downtime
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-            }else if(cooldownTimer >= shieldDowntime && shield < shieldHealthCustom){
-                // recharge phase: can take damage but doesn't reset downtime
-                shield -= damage;
-                if(shield < 0f) shield = 0f;
-            }else{
+            } else {
+                // during downtime or recharge → wall takes damage
                 super.damage(damage);
             }
         }
 
         @Override
         public void damagePierce(float damage){
-            if(shield > 0f){
+            if (shield > 0f) {
                 shield -= damage;
-                if(shield <= 0f){
+                if (shield <= 0f) {
                     shield = 0f;
                     cooldownTimer = 0f;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-            }else if(cooldownTimer >= shieldDowntime && shield < shieldHealthCustom){
-                shield -= damage;
-                if(shield < 0f) shield = 0f;
-            }else{
+            } else {
                 super.damagePierce(damage);
             }
         }
