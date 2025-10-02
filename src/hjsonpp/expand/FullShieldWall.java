@@ -44,7 +44,8 @@ public class FullShieldWall extends Wall {
     public String shieldShape = "square";      // "circle" or "square"
     public int shieldBlockRadius = 2;          // 0 = off, 1=smaller, 2=same, 3=larger
     public float shieldBlockRadiusAmount = 1f; // scale factor for small/large shield
-
+	public float RechargeMutiplier = 1f
+	
     public FullShieldWall(String name) {
         super(name);
         group = BlockGroup.walls;
@@ -93,7 +94,7 @@ public class FullShieldWall extends Wall {
                 } else {
                     // We are in Recharge Phase: accumulate recharge progress using regenPerSec
                     // regenPerSec is in HP per second; Time.delta is in frames, so divide by 60
-                    rechargeProgress += regenPerSec * Time.delta / 60f;
+                    rechargeProgress += ( regenPerSec * Time.delta / 60f ) * RechargeMutiplier;
 
                     if (rechargeProgress >= shieldHealthCustom) {
                         // recharge complete — restore full shield
