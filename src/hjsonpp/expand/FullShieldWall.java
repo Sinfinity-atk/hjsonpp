@@ -23,26 +23,29 @@ import java.util.Locale;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
- * Blocks bullets with shield health, and units with BaseShield-style logic.
+ * Uses buildup like Force Projector: when buildup exceeds capacity, shield breaks, then recharges.
  */
 public class FullShieldWall extends Wall {
 
     // tunables via HJSON
-    public float shieldRadius = 60f;           // fallback shield radius
-    public float shieldHealthCustom = 4000f;
-    public float regenPerSec = 20f;            // shield regen per second
+    public float shieldRadius = 60f;           
+    public float shieldHealthCustom = 4000f;   // shield capacity
+    public float regenPerSec = 20f;            // shield repair rate
     public float wallRegenPerSec = 0f;         // wall HP regen per sec
-    public float shieldDowntime = 300f;        // frames until shield starts regenerating after breaking
     public String shieldColor = "ffffff";
     public float shieldOpacity = 1f;
 
-    public boolean blockUnits = true;          // enable/disable unit blocking
-    public String blockUnitsFrom = "shield";   // "shield", "block", or "both"
+    public boolean blockUnits = true;          
+    public String blockUnitsFrom = "shield";   
 
     // --- NEW FIELDS ---
-    public String shieldShape = "square";      // "circle" or "square"
-    public int shieldBlockRadius = 2;          // 0 = off, 1=smaller, 2=same, 3=larger
-    public float shieldBlockRadiusAmount = 1f; // scale factor for small/large shield
+    public String shieldShape = "square";      
+    public int shieldBlockRadius = 2;          
+    public float shieldBlockRadiusAmount = 1f; 
+
+    // buildup system params
+    public float cooldownNormal = 1f;          // normal decay speed
+    public float cooldownBrokenBase = 0.25f;   // slower decay while broken
 
     public FullShieldWall(String name) {
         super(name);
@@ -57,45 +60,46 @@ public class FullShieldWall extends Wall {
 
         stats.add(Stat.abilities, String.format(Locale.ROOT, "Shield HP: %.0f", shieldHealthCustom));
         stats.add(Stat.abilities, String.format(Locale.ROOT, "Shield Repair %.0f/s", regenPerSec));
-        stats.add(Stat.abilities, String.format(Locale.ROOT, "Shield Downtime %.1fs", shieldDowntime / 60f));
         if (wallRegenPerSec > 0f) {
             stats.add(Stat.abilities, String.format(Locale.ROOT, "Wall Repair %.0f/s", wallRegenPerSec));
         }
     }
 
     public class FullShieldWallBuild extends WallBuild {
-        public float buildup = 0f;      // how much damage shield has absorbed
-        public boolean broken = false;  // true if shield is down
+        public float buildup = 0f;     
+        public boolean broken = false; 
         public Color colorCached;
 
         @Override
         public void updateTile() {
-            // Shield recharge logic
-            if (buildup > 0f) {
-                float cooldown = broken ? shieldDowntime / 60f : 1f; // recharge slower when broken
-                buildup -= regenPerSec * Time.delta / 60f / cooldown;
-                if (buildup < 0f) buildup = 0f;
+            // buildup decay
+            if(buildup > 0){
+                float scale = !broken ? cooldownNormal : cooldownBrokenBase;
+                buildup -= Time.delta * scale;
+                if(buildup < 0) buildup = 0;
             }
 
-            if (broken && buildup <= 0f) {
+            // restore shield if cooled
+            if(broken && buildup <= 0){
                 broken = false;
-                Fx.absorb.at(x, y, computeShieldRadius(), team.color);
             }
 
             float r = computeShieldRadius();
 
-            // bullet blocking (enemy only, uses buildup system)
-            if (r > 0f && !broken) {
+            // bullet blocking only if shield is up
+            if(r > 0f && !broken){
                 Groups.bullet.intersect(x - r, y - r, r * 2f, r * 2f, (Bullet b) -> {
-                    if (b.team == team) return;
-                    float dx = b.x - x, dy = b.y - y;
-                    if (dx * dx + dy * dy > r * r) return;
+                    if(b.team == team) return;
+                    float dx = b.x - x;
+                    float dy = b.y - y;
+                    if(dx * dx + dy * dy > r * r) return;
 
                     b.remove();
                     buildup += b.damage;
-                    if (buildup >= shieldHealthCustom) {
+
+                    if(buildup >= shieldHealthCustom && !broken){
                         broken = true;
-                        buildup = shieldHealthCustom; // cap
+                        buildup = shieldHealthCustom;
                         Fx.shieldBreak.at(x, y, r, team.color);
                     }
                 });
@@ -106,8 +110,8 @@ public class FullShieldWall extends Wall {
                 health = Math.min(maxHealth, health + wallRegenPerSec * Time.delta / 60f);
             }
 
-            // --- unit blocking (unchanged) ---
-            if (blockUnits) {
+            // --- unit blocking ---
+            if (blockUnits && !broken) {
                 if ("shield".equalsIgnoreCase(blockUnitsFrom) || "both".equalsIgnoreCase(blockUnitsFrom)) {
                     if (r > 0f) {
                         Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, (Unit unit) -> {
@@ -150,47 +154,46 @@ public class FullShieldWall extends Wall {
             }
         }
 
-        // Shield damage handling (buildup system)
+        // Shield damage handling (with buildup)
         @Override
         public void damage(float damage){
-            if (!broken) {
+            if(!broken){
                 buildup += damage;
-                if (buildup >= shieldHealthCustom) {
+                if(buildup >= shieldHealthCustom){
                     broken = true;
                     buildup = shieldHealthCustom;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-            } else {
-                // during downtime or recharge → wall takes damage
+            }else{
                 super.damage(damage);
             }
         }
 
         @Override
         public void damagePierce(float damage){
-            if (!broken) {
+            if(!broken){
                 buildup += damage;
-                if (buildup >= shieldHealthCustom) {
+                if(buildup >= shieldHealthCustom){
                     broken = true;
                     buildup = shieldHealthCustom;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-            } else {
+            }else{
                 super.damagePierce(damage);
             }
         }
 
         // --- compute shield radius based on block size + shieldBlockRadius ---
         private float computeShieldRadius() {
-            float base = block.size * 8f; // block size in world units
+            float base = block.size * 8f; 
             if (shieldBlockRadius == 1) {
-                return base * shieldBlockRadiusAmount; // smaller
+                return base * shieldBlockRadiusAmount; 
             } else if (shieldBlockRadius == 2) {
-                return base; // exactly block size
+                return base; 
             } else if (shieldBlockRadius == 3) {
-                return base * (1f + shieldBlockRadiusAmount); // larger
+                return base * (1f + shieldBlockRadiusAmount); 
             } else {
-                return shieldRadius; // fallback
+                return shieldRadius; 
             }
         }
 
@@ -198,8 +201,10 @@ public class FullShieldWall extends Wall {
         public void draw() {
             super.draw();
 
+            if(broken) return;
+
             float r = computeShieldRadius();
-            if (r <= 0f || broken) return;
+            if (r <= 0f) return;
 
             if (colorCached == null) {
                 try {
@@ -225,34 +230,32 @@ public class FullShieldWall extends Wall {
         @Override
         public void displayBars(Table table) {
             super.displayBars(table);
-
-            // Shield HP Bar (reverse: full when not broken)
+            // Shield HP
             table.add(new Bar(
-                () -> "Shield HP: " + (int)(shieldHealthCustom - buildup) + " / " + (int)shieldHealthCustom,
-                () -> broken ? Color.valueOf("ffff77") : Color.valueOf("77ff77"),
-                () -> broken ? 0f : 1f - buildup / shieldHealthCustom
+                    () -> "Shield HP: " + (int) shield + " / " + (int) shieldHealthCustom,
+                    () -> Color.valueOf("ffff77"),
+                    () -> shield / shieldHealthCustom
             )).row();
-
-            // Shield Status
+            // Shield HP (inverted buildup)
             table.add(new Bar(
-                () -> broken ? "Shield Recharging..." : "Shield Active",
-                () -> broken ? Color.valueOf("ffff77") : Color.valueOf("77ff77"),
-                () -> broken ? buildup / shieldHealthCustom : 1f
+                    () -> broken ? "Shield Broken" : "Shield Active",
+                    () -> broken ? Color.valueOf("ff7777") : Color.valueOf("77ff77"),
+                    () -> 1f - (buildup / shieldHealthCustom)
             )).row();
 
             // Shield Repair Speed
             table.add(new Bar(
-                () -> "Shield Repair " + (int) regenPerSec + "/s",
-                () -> Color.valueOf("77ff77"),
-                () -> 1f
+                    () -> "Shield Repair " + (int) regenPerSec + "/s",
+                    () -> Color.valueOf("77ff77"),
+                    () -> 1f
             )).row();
 
             // Wall Repair Speed
             if (wallRegenPerSec > 0f) {
                 table.add(new Bar(
-                    () -> "Wall Repair " + (int) wallRegenPerSec + "/s",
-                    () -> Color.valueOf("77ff77"),
-                    () -> 1f
+                        () -> "Wall Repair " + (int) wallRegenPerSec + "/s",
+                        () -> Color.valueOf("77ff77"),
+                        () -> 1f
                 )).row();
             }
         }
