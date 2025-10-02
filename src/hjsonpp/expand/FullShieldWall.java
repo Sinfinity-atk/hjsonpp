@@ -258,55 +258,60 @@ public class FullShieldWall extends Wall {
         }
 
         // --- Info Bars ---
-        @Override
-        public void displayBars(Table table) {
-            super.displayBars(table);
+@Override
+public void displayBars(Table table) {
+    super.displayBars(table);
 
-            // Shield HP
-            table.add(new Bar(
-                    () -> "Shield HP: " + (int) shield + " / " + (int) shieldHealthCustom,
-                    () -> Color.valueOf("ffff77"),
-                    () -> shield / shieldHealthCustom
-            )).row();
+    // Shield HP
+    table.add(new Bar(
+            () -> "Shield HP: " + (int) shield + " / " + (int) shieldHealthCustom,
+            () -> Color.valueOf("ffff77"),
+            () -> shield / shieldHealthCustom
+    )).row();
 
-            // Shield Status / Downtime / Recharge
-            table.add(new Bar(
-                    () -> {
-                        if (shield > 0f) {
-                            return "Shield Active";
-                        } else {
-                            if (recharging) {
-                                float pct = Math.min(1f, rechargeProgress / shieldHealthCustom);
-                                return String.format(Locale.ROOT, "Shield Recharging (%.0f%%)", pct * 100f);
-                            } else {
-                                float timeLeft = Math.max(0f, shieldDowntime - cooldownTimer) / 60f;
-                                return String.format(Locale.ROOT, "Shield Downtime (%.1fs)", timeLeft);
-                            }
-                        }
-                    },
-                    () -> shield > 0f ? Color.valueOf("77ff77") : Color.valueOf("ffff77"),
-                    () -> {
-                        if (shield > 0f) return 1f;
-                        if (recharging) return Math.min(1f, rechargeProgress / shieldHealthCustom);
-                        return Math.min(1f, cooldownTimer / shieldDowntime);
+    // Shield Status / Downtime / Recharge (with different color for recharging)
+    table.add(new Bar(
+            () -> {
+                if (shield > 0f) {
+                    return "Shield Active";
+                } else {
+                    if (recharging) {
+                        float pct = Math.min(1f, rechargeProgress / shieldHealthCustom);
+                        return String.format(Locale.ROOT, "Shield Recharging (%.0f%%)", pct * 100f);
+                    } else {
+                        float timeLeft = Math.max(0f, shieldDowntime - cooldownTimer) / 60f;
+                        return String.format(Locale.ROOT, "Shield Downtime (%.1fs)", timeLeft);
                     }
-            )).row();
-
-            // Shield Repair Speed
-            table.add(new Bar(
-                    () -> "Shield Repair " + (int) regenPerSec + "/s",
-                    () -> Color.valueOf("77ff77"),
-                    () -> 1f
-            )).row();
-
-            // Wall Repair Speed
-            if (wallRegenPerSec > 0f) {
-                table.add(new Bar(
-                        () -> "Wall Repair " + (int) wallRegenPerSec + "/s",
-                        () -> Color.valueOf("77ff77"),
-                        () -> 1f
-                )).row();
+                }
+            },
+            () -> {
+                if (shield > 0f) return Color.valueOf("77ff77");           // active = green
+                if (recharging) return Color.valueOf("77aaff");           // recharging = blue (changeable)
+                return Color.valueOf("ffff77");                           // downtime = yellow
+            },
+            () -> {
+                if (shield > 0f) return 1f;
+                if (recharging) return Math.min(1f, rechargeProgress / shieldHealthCustom);
+                return Math.min(1f, cooldownTimer / shieldDowntime);
             }
-        }
+    )).row();
+
+		// Shield Repair Speed
+					table.add(new Bar(
+					() -> "Shield Repair " + (int) regenPerSec + "/s",
+					() -> Color.valueOf("77ff77"),
+					() -> 1f
+					)).row();
+		
+			// Wall Repair Speed
+			if (wallRegenPerSec > 0f) {
+				table.add(new Bar(
+						() -> "Wall Repair " + (int) wallRegenPerSec + "/s",
+						() -> Color.valueOf("77ff77"),
+						() -> 1f
+				)).row();
+			}
+		}
+
     }
 }
