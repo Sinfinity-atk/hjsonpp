@@ -23,7 +23,7 @@ import java.util.Locale;
 
 /**
  * Full Shield Wall - hybrid of Wall + Shield behavior.
- * Shield absorbs all projectiles until broken, then wall takes damage during downtime and recharge.
+ * Blocks bullets with shield health, and units with BaseShield-style logic.
  */
 public class FullShieldWall extends Wall {
 
@@ -71,20 +71,23 @@ public class FullShieldWall extends Wall {
 
         @Override
         public void updateTile() {
-            // shield downtime + recharge logic
+            // handle downtime & recharge
             if (shield <= 0f) {
-                cooldownTimer += Time.delta;
-                if (cooldownTimer >= shieldDowntime) {
-                    // after downtime, shield recharges from 0 to full
-                    shield += regenPerSec * Time.delta / 60f;
-                    if (shield > shieldHealthCustom) {
-                        shield = shieldHealthCustom;
+                if (cooldownTimer < shieldDowntime) {
+                    cooldownTimer += Time.delta;
+                } else {
+                    // recharge shield
+                    if (shield < shieldHealthCustom) {
+                        shield += regenPerSec * Time.delta / 60f;
+                        if (shield > shieldHealthCustom) shield = shieldHealthCustom;
                     }
                 }
-            } else if (shield < shieldHealthCustom) {
-                // if shield is partially damaged but >0, keep repairing
-                shield += regenPerSec * Time.delta / 60f;
-                if (shield > shieldHealthCustom) shield = shieldHealthCustom;
+            } else {
+                // normal shield regen
+                if (shield < shieldHealthCustom) {
+                    shield += regenPerSec * Time.delta / 60f;
+                    if (shield > shieldHealthCustom) shield = shieldHealthCustom;
+                }
             }
 
             // wall HP regen
@@ -108,7 +111,7 @@ public class FullShieldWall extends Wall {
 
                     if (shield <= 0f) {
                         shield = 0f;
-                        cooldownTimer = 0f; // start downtime
+                        cooldownTimer = 0f; // start downtime only once
                         Fx.shieldBreak.at(x, y, r, team.color);
                     }
                 });
@@ -123,7 +126,7 @@ public class FullShieldWall extends Wall {
 
                             if (overlapDst > 0) {
                                 if (overlapDst > unit.hitSize * 1.5f) {
-								unit.move(Tmp.v1.set(unit).sub(db).setLength(overlapDst + 0.01f));
+                                    unit.kill();
                                 } else {
                                     unit.vel.setZero();
                                     unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
@@ -158,31 +161,38 @@ public class FullShieldWall extends Wall {
             }
         }
 
-        // --- damage handling ---
+        // Shield damage handling
         @Override
         public void damage(float damage){
-            if (shield > 0f){
+            if(shield > 0f){
                 shield -= damage;
-                if (shield <= 0f){
+                if(shield <= 0f){
                     shield = 0f;
-                    cooldownTimer = 0f;
+                    cooldownTimer = 0f; // enter downtime once
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-            } else {
+            }else if(cooldownTimer >= shieldDowntime && shield < shieldHealthCustom){
+                // recharge phase: can take damage but doesn't reset downtime
+                shield -= damage;
+                if(shield < 0f) shield = 0f;
+            }else{
                 super.damage(damage);
             }
         }
 
         @Override
         public void damagePierce(float damage){
-            if (shield > 0f){
+            if(shield > 0f){
                 shield -= damage;
-                if (shield <= 0f){
+                if(shield <= 0f){
                     shield = 0f;
                     cooldownTimer = 0f;
                     Fx.shieldBreak.at(x, y, computeShieldRadius(), team.color);
                 }
-            } else {
+            }else if(cooldownTimer >= shieldDowntime && shield < shieldHealthCustom){
+                shield -= damage;
+                if(shield < 0f) shield = 0f;
+            }else{
                 super.damagePierce(damage);
             }
         }
@@ -249,15 +259,11 @@ public class FullShieldWall extends Wall {
                             float timeLeft = Math.max(0f, shieldDowntime - cooldownTimer) / 60f;
                             return String.format(Locale.ROOT, "Shield Recharging (%.1fs)", timeLeft);
                         } else {
-                            return "Shield Repairing";
+                            return "Shield Recharging...";
                         }
                     },
                     () -> shield > 0f ? Color.valueOf("77ff77") : Color.valueOf("ffff77"),
-                    () -> {
-                        if (shield > 0f) return 1f;
-                        else if (cooldownTimer < shieldDowntime) return cooldownTimer / shieldDowntime;
-                        else return shield / shieldHealthCustom;
-                    }
+                    () -> shield > 0f ? 1f : cooldownTimer / shieldDowntime
             )).row();
 
             // Shield Repair Speed
