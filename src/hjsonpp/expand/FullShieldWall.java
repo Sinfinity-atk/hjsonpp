@@ -44,7 +44,7 @@ public class FullShieldWall extends Wall {
     public String shieldShape = "square";      // "circle" or "square"
     public int shieldBlockRadius = 2;          // 0 = off, 1=smaller, 2=same, 3=larger
     public float shieldBlockRadiusAmount = 1f; // scale factor for small/large shield
-	public float RechargeMutiplier = 1f
+	public float RechargeMutiplier = 1f;
 	
     public FullShieldWall(String name) {
         super(name);
