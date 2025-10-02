@@ -123,7 +123,7 @@ public class FullShieldWall extends Wall {
 
                             if (overlapDst > 0) {
                                 if (overlapDst > unit.hitSize * 1.5f) {
-                                    unit.kill();
+								unit.move(Tmp.v1.set(unit).sub(db).setLength(overlapDst + 0.01f));
                                 } else {
                                     unit.vel.setZero();
                                     unit.move(Tmp.v1.set(unit).sub(this).setLength(overlapDst + 0.01f));
